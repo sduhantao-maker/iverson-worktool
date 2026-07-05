@@ -1,0 +1,24 @@
+.DS_Store
+._*
+
+# Build outputs
+dist/
+build/
+DerivedData/
+
+# Swift/Xcode local state
+.build/
+*.xcuserstate
+xcuserdata/
+
+# Python helper script cache
+__pycache__/
+*.pyc
+
+# Logs and crash dumps
+*.log
+*.dmp
+
+# Local secrets/state
+.env
+.env.*
