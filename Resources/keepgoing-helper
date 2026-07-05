@@ -1,0 +1,40 @@
+#!/bin/zsh
+set -eu
+
+PMSET="/usr/bin/pmset"
+
+usage() {
+  echo "usage: keepgoing-helper status|enable|disable" >&2
+  exit 64
+}
+
+status() {
+  local value
+  value="$("$PMSET" -g | /usr/bin/awk '$1 == "SleepDisabled" { print $2; found=1; exit } END { if (!found) print "0" }')"
+  if [[ "$value" == "1" ]]; then
+    echo "enabled"
+  else
+    echo "normal"
+  fi
+}
+
+case "${1:-}" in
+  status)
+    status
+    ;;
+  enable)
+    "$PMSET" -a disablesleep 1
+    "$PMSET" -a sleep 0
+    "$PMSET" -a tcpkeepalive 1
+    "$PMSET" -a womp 1
+    echo "enabled"
+    ;;
+  disable)
+    "$PMSET" -a disablesleep 0
+    "$PMSET" -a sleep 1
+    echo "normal"
+    ;;
+  *)
+    usage
+    ;;
+esac
