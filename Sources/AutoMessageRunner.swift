@@ -174,11 +174,20 @@ final class AutoMessageRunner {
         pasteboard.clearContents()
         pasteboard.setString(message, forType: .string)
 
-        let submitScript = submit ? "\ndelay 0.45\nkey code 36" : ""
+        let submitScript = submit ? "\ndelay 0.6\nkey code 36" : ""
         let pasteScript = """
         tell application "System Events"
             tell process \(appleScriptLiteral(processName))
                 set frontmost to true
+                delay 0.5
+                try
+                    set windowPosition to position of window 1
+                    set windowSize to size of window 1
+                    set clickX to (item 1 of windowPosition) + ((item 1 of windowSize) / 2)
+                    set clickY to (item 2 of windowPosition) + (item 2 of windowSize) - 72
+                    click at {clickX, clickY}
+                    delay 0.25
+                end try
                 keystroke "v" using command down\(submitScript)
             end tell
         end tell
