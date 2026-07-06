@@ -279,18 +279,18 @@ final class AutoMessageViewController: NSViewController {
             title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 12),
             title.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
 
-            headerRow.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            headerRow.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 24),
             headerRow.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
-            headerRow.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 8),
+            headerRow.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 20),
             headerRow.heightAnchor.constraint(equalToConstant: 16),
 
-            enabledHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 2),
+            enabledHeader.centerXAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 29),
             enabledHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
 
-            appHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 90),
+            appHeader.centerXAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 154),
             appHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
 
-            messageHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 232),
+            messageHeader.centerXAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 514),
             messageHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
 
             targetsStack.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
@@ -337,7 +337,7 @@ final class AutoMessageViewController: NSViewController {
 
         NSLayoutConstraint.activate([
             dryRunLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
-            dryRunLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            dryRunLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 22),
 
             dryRunSwitch.leadingAnchor.constraint(equalTo: dryRunLabel.trailingAnchor, constant: 12),
             dryRunSwitch.centerYAnchor.constraint(equalTo: dryRunLabel.centerYAnchor),
