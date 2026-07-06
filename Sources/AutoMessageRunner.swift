@@ -218,25 +218,23 @@ final class AutoMessageRunner {
         }
 
         if submit && isClaude {
-            Thread.sleep(forTimeInterval: 0.6)
-            if !clickSendButton(for: processName) {
-                let fallback = runCommand("/usr/bin/osascript", [
-                    "-e",
-                    """
-                    tell application "System Events"
-                        tell process \(appleScriptLiteral(processName))
-                            set frontmost to true
-                            keystroke return using command down
-                        end tell
+            let submit = runCommand("/usr/bin/osascript", [
+                "-e",
+                """
+                tell application "System Events"
+                    tell process \(appleScriptLiteral(processName))
+                        set frontmost to true
+                        delay 0.6
+                        key code 36
                     end tell
-                    """,
-                ])
-                if fallback.code != 0 {
-                    return AutoMessageRunResult(
-                        ok: false,
-                        message: "发送到 \(appName) 已粘贴但提交失败：\(cleanMessage(fallback.stderr, fallback: fallback.stdout))"
-                    )
-                }
+                end tell
+                """,
+            ])
+            if submit.code != 0 {
+                return AutoMessageRunResult(
+                    ok: false,
+                    message: "发送到 \(appName) 已粘贴但提交失败：\(cleanMessage(submit.stderr, fallback: submit.stdout))"
+                )
             }
         }
 
@@ -246,11 +244,6 @@ final class AutoMessageRunner {
     private func clickChatInput(for processName: String) -> Bool {
         guard let bounds = targetWindowBounds(for: processName) else { return false }
         return clickScreenPoint(CGPoint(x: bounds.midX, y: bounds.maxY - 72))
-    }
-
-    private func clickSendButton(for processName: String) -> Bool {
-        guard let bounds = targetWindowBounds(for: processName) else { return false }
-        return clickScreenPoint(CGPoint(x: bounds.maxX - 86, y: bounds.maxY - 72))
     }
 
     private func targetWindowBounds(for processName: String) -> CGRect? {
