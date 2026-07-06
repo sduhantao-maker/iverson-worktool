@@ -62,6 +62,28 @@ pmset -a disablesleep 0
 pmset -a sleep 1
 ```
 
+## Auto Message
+
+KeepGoing includes an Auto Message tab for scheduling messages to Codex and Claude.
+
+Keep **Dry run** enabled while testing. Dry run reports the enabled targets without pasting or submitting any message. Before real sends, grant KeepGoing Accessibility access in:
+
+```text
+System Settings -> Privacy & Security -> Accessibility
+```
+
+Actions:
+
+- `Test Send` runs one send cycle immediately.
+- `Install Schedule` writes and loads `~/Library/LaunchAgents/com.iverson.keepgoing.automessage.plist`.
+- `Uninstall` unloads and removes `~/Library/LaunchAgents/com.iverson.keepgoing.automessage.plist`.
+
+Auto Message settings are stored at:
+
+```text
+~/Library/Application Support/KeepGoing/auto-message.json
+```
+
 ## Git
 
 Track source and docs. Do not track generated app bundles, caches, or local machine state.
