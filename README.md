@@ -6,7 +6,13 @@ Iverson’s WorkTool is a native macOS app built for a very specific workflow: k
 
 It is not trying to be a full automation platform. It is closer to a quiet daily workbench for researchers, PhD students, writers, and developers who repeatedly start the same AI-agent routines.
 
-![Iverson’s WorkTool screenshot](docs/screenshots/full2.png)
+### Auto Message
+
+![Auto Message screenshot](docs/screenshots/auto-message.png)
+
+### KeepGoing
+
+![KeepGoing screenshot](docs/screenshots/keepgoing.png)
 
 ## Why this exists
 
