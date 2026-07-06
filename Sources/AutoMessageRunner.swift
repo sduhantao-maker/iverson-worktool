@@ -174,7 +174,7 @@ final class AutoMessageRunner {
         pasteboard.clearContents()
         pasteboard.setString(message, forType: .string)
 
-        let submitScript = submit ? "\nkey code 36" : ""
+        let submitScript = submit ? "\ndelay 0.45\nkey code 36" : ""
         let pasteScript = """
         tell application "System Events"
             tell process \(appleScriptLiteral(processName))
@@ -191,6 +191,6 @@ final class AutoMessageRunner {
             )
         }
 
-        return AutoMessageRunResult(ok: true, message: "已发送到 \(appName)")
+        return AutoMessageRunResult(ok: true, message: submit ? "已发送到 \(appName) 并回车提交" : "已发送到 \(appName)")
     }
 }
