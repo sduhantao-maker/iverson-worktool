@@ -1,5 +1,6 @@
 import Cocoa
 import Foundation
+import ApplicationServices
 
 struct AutoMessageRunResult {
     let ok: Bool
@@ -38,6 +39,13 @@ final class AutoMessageRunner {
             return AutoMessageRunResult(
                 ok: true,
                 message: "Dry run 已开启：不会粘贴或发送；目标是 \(appNames.isEmpty ? "无启用目标" : appNames)"
+            )
+        }
+
+        guard accessibilityTrusted(prompt: true) else {
+            return AutoMessageRunResult(
+                ok: false,
+                message: "需要辅助功能权限：请在 System Settings -> Privacy & Security -> Accessibility 允许当前程序。测试发送允许 Iverson’s WorkTool；定时发送允许 keepgoing-automessage。"
             )
         }
 
@@ -283,5 +291,11 @@ final class AutoMessageRunner {
         up.post(tap: .cghidEventTap)
         usleep(120_000)
         return true
+    }
+
+    private func accessibilityTrusted(prompt: Bool) -> Bool {
+        let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        let options = [promptKey: prompt] as CFDictionary
+        return AXIsProcessTrustedWithOptions(options)
     }
 }
