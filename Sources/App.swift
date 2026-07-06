@@ -12,7 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "KeepGoing"
+        window.title = "Iverson’s WorkTool"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.backgroundColor = .windowBackgroundColor
