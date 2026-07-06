@@ -23,6 +23,7 @@ private final class AutoMessageTargetRowView: NSView {
         appLabel.stringValue = target.appName
         appLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         appLabel.textColor = .labelColor
+        appLabel.alignment = .center
         configure(field: messageField, value: target.message, placeholder: "Message")
 
         addSubview(enabledSwitch)
@@ -33,9 +34,9 @@ private final class AutoMessageTargetRowView: NSView {
             enabledSwitch.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
             enabledSwitch.centerYAnchor.constraint(equalTo: centerYAnchor),
 
-            appLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 90),
+            appLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 104),
             appLabel.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
-            appLabel.widthAnchor.constraint(equalToConstant: 128),
+            appLabel.widthAnchor.constraint(equalToConstant: 104),
 
             messageField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 232),
             messageField.trailingAnchor.constraint(equalTo: trailingAnchor),
