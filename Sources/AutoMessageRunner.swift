@@ -187,7 +187,7 @@ final class AutoMessageRunner {
         if paste.code != 0 {
             return AutoMessageRunResult(
                 ok: false,
-                message: "发送到 \(appName) 失败。请在 System Settings -> Privacy & Security -> Accessibility -> KeepGoing 开启辅助功能权限。\(cleanMessage(paste.stderr, fallback: paste.stdout))"
+                message: "发送到 \(appName) 失败。请在 System Settings -> Privacy & Security -> Accessibility -> Iverson’s WorkTool 开启辅助功能权限。若是定时任务触发失败，也请允许 keepgoing-automessage。\(cleanMessage(paste.stderr, fallback: paste.stdout))"
             )
         }
 
