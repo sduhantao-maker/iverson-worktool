@@ -189,6 +189,19 @@ final class AutoMessageRunner {
         } else {
             submitScript = submit ? "\ndelay 0.6\nkey code 36" : ""
         }
+        let pasteCommand: String
+        if processName.localizedCaseInsensitiveContains("claude") {
+            pasteCommand = """
+                try
+                    click menu item "Paste" of menu "Edit" of menu bar 1
+                on error
+                    keystroke "v" using command down
+                end try
+            """
+        } else {
+            pasteCommand = "keystroke \"v\" using command down"
+        }
+
         let pasteScript = """
         tell application "System Events"
             tell process \(appleScriptLiteral(processName))
@@ -202,7 +215,7 @@ final class AutoMessageRunner {
                     click at {clickX, clickY}
                     delay 0.25
                 end try
-                keystroke "v" using command down\(submitScript)
+                \(pasteCommand)\(submitScript)
             end tell
         end tell
         """
