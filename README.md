@@ -1,6 +1,6 @@
-# KeepGoing
+# Iverson’s WorkTool
 
-KeepGoing is a local macOS utility for switching the computer between normal sleep behavior and a "keep running" mode.
+Iverson’s WorkTool is a local macOS utility. It includes KeepGoing, a feature for switching the computer between normal sleep behavior and a "keep running" mode.
 
 It builds a small Cocoa app and uses a privileged helper at `/usr/local/bin/keepgoing-helper` to call `pmset`.
 
@@ -8,7 +8,7 @@ It builds a small Cocoa app and uses a privileged helper at `/usr/local/bin/keep
 
 - `Sources/` - Swift Cocoa app source.
 - `Resources/` - app icon, icon source, helper, install/uninstall scripts.
-- `Scripts/build_app.sh` - builds and signs `dist/KeepGoing.app`.
+- `Scripts/build_app.sh` - builds and signs `dist/Iverson’s WorkTool.app`.
 - `docs/screenshots/` - UI screenshots from the original Codex build.
 - `dist/` - local build output. This directory is ignored by Git.
 
@@ -21,7 +21,7 @@ It builds a small Cocoa app and uses a privileged helper at `/usr/local/bin/keep
 Output:
 
 ```text
-dist/KeepGoing.app
+dist/Iverson’s WorkTool.app
 ```
 
 ## Helper
@@ -64,9 +64,9 @@ pmset -a sleep 1
 
 ## Auto Message
 
-KeepGoing includes an Auto Message tab for scheduling messages to Codex and Claude.
+Iverson’s WorkTool includes an Auto Message tab for scheduling messages to Codex and Claude.
 
-Keep **Dry run** enabled while testing. Dry run reports the enabled targets without pasting or submitting any message. Before real sends, grant KeepGoing Accessibility access in:
+Keep **Dry run** enabled while testing. Dry run reports the enabled targets without pasting or submitting any message. Before real sends, grant Iverson’s WorkTool Accessibility access in:
 
 ```text
 System Settings -> Privacy & Security -> Accessibility

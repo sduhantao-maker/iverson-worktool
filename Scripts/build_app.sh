@@ -4,13 +4,13 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_ROOT="$(/usr/bin/mktemp -d /tmp/KeepGoing-build.XXXXXX)"
 trap '/bin/rm -rf "$BUILD_ROOT"' EXIT
-APP="$BUILD_ROOT/KeepGoing.app"
-FINAL_APP="$ROOT/dist/KeepGoing.app"
+APP="$BUILD_ROOT/Iverson’s WorkTool.app"
+FINAL_APP="$ROOT/dist/Iverson’s WorkTool.app"
 CONTENTS="$APP/Contents"
 MACOS="$CONTENTS/MacOS"
 RESOURCES="$CONTENTS/Resources"
 
-/bin/rm -rf "$FINAL_APP" "$ROOT/dist/keepgoing.app"
+/bin/rm -rf "$FINAL_APP" "$ROOT/dist/KeepGoing.app" "$ROOT/dist/keepgoing.app"
 /bin/mkdir -p "$MACOS" "$RESOURCES"
 
 /bin/cp "$ROOT/Info.plist" "$CONTENTS/Info.plist"

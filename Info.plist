@@ -12,8 +12,10 @@
   <string>local.codex.KeepGoing</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
+  <key>CFBundleDisplayName</key>
+  <string>Iverson’s WorkTool</string>
   <key>CFBundleName</key>
-  <string>KeepGoing</string>
+  <string>Iverson’s WorkTool</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
