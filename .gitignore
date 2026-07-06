@@ -5,6 +5,7 @@
 dist/
 build/
 DerivedData/
+.worktrees/
 
 # Swift/Xcode local state
 .build/
