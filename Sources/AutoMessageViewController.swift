@@ -3,11 +3,14 @@ import Cocoa
 private final class AutoMessageTargetRowView: NSView {
     private let enabledSwitch = ToggleSwitch()
     private let appField = NSTextField()
-    private let processField = NSTextField()
     private let messageField = NSTextField()
+    private let originalAppName: String
+    private let originalProcessName: String
     private let launchWaitSeconds: Double
 
     init(target: AutoMessageTarget) {
+        originalAppName = target.appName
+        originalProcessName = target.processName
         launchWaitSeconds = target.launchWaitSeconds
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
@@ -17,12 +20,10 @@ private final class AutoMessageTargetRowView: NSView {
         enabledSwitch.isOn = target.enabled
 
         configure(field: appField, value: target.appName, placeholder: "App")
-        configure(field: processField, value: target.processName, placeholder: "Process")
         configure(field: messageField, value: target.message, placeholder: "Message")
 
         addSubview(enabledSwitch)
         addSubview(appField)
-        addSubview(processField)
         addSubview(messageField)
 
         NSLayoutConstraint.activate([
@@ -31,13 +32,9 @@ private final class AutoMessageTargetRowView: NSView {
 
             appField.leadingAnchor.constraint(equalTo: enabledSwitch.trailingAnchor, constant: 12),
             appField.topAnchor.constraint(equalTo: topAnchor, constant: 6),
-            appField.widthAnchor.constraint(equalToConstant: 112),
+            appField.widthAnchor.constraint(equalToConstant: 132),
 
-            processField.leadingAnchor.constraint(equalTo: appField.trailingAnchor, constant: 8),
-            processField.topAnchor.constraint(equalTo: appField.topAnchor),
-            processField.widthAnchor.constraint(equalToConstant: 112),
-
-            messageField.leadingAnchor.constraint(equalTo: processField.trailingAnchor, constant: 8),
+            messageField.leadingAnchor.constraint(equalTo: appField.trailingAnchor, constant: 10),
             messageField.trailingAnchor.constraint(equalTo: trailingAnchor),
             messageField.topAnchor.constraint(equalTo: appField.topAnchor),
         ])
@@ -48,10 +45,19 @@ private final class AutoMessageTargetRowView: NSView {
     }
 
     func target() -> AutoMessageTarget {
-        AutoMessageTarget(
+        let appName = appField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let processName: String
+        if originalProcessName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            originalProcessName == originalAppName {
+            processName = appName
+        } else {
+            processName = originalProcessName
+        }
+
+        return AutoMessageTarget(
             enabled: enabledSwitch.isOn,
-            appName: appField.stringValue,
-            processName: processField.stringValue,
+            appName: appName,
+            processName: processName,
             message: messageField.stringValue,
             launchWaitSeconds: launchWaitSeconds
         )
@@ -240,7 +246,11 @@ final class AutoMessageViewController: NSViewController {
         let icon = SymbolTile(symbol: "bubble.left.and.bubble.right.fill", fill: NSColor.systemBlue.withAlphaComponent(0.13), tint: .systemBlue)
         icon.translatesAutoresizingMaskIntoConstraints = false
         let title = makeLabel("目标与消息", font: .systemFont(ofSize: 14, weight: .semibold), color: .labelColor)
-        let hint = makeLabel("启用 / App / Process / Message", font: .systemFont(ofSize: 12), color: .secondaryLabelColor)
+        let enabledHeader = makeLabel("启用", font: .systemFont(ofSize: 12), color: .secondaryLabelColor)
+        let appHeader = makeLabel("App", font: .systemFont(ofSize: 12), color: .secondaryLabelColor)
+        let messageHeader = makeLabel("Message", font: .systemFont(ofSize: 12), color: .secondaryLabelColor)
+        let headerRow = NSView()
+        headerRow.translatesAutoresizingMaskIntoConstraints = false
 
         targetsStack.translatesAutoresizingMaskIntoConstraints = false
         targetsStack.orientation = .vertical
@@ -249,7 +259,10 @@ final class AutoMessageViewController: NSViewController {
 
         card.addSubview(icon)
         card.addSubview(title)
-        card.addSubview(hint)
+        card.addSubview(headerRow)
+        headerRow.addSubview(enabledHeader)
+        headerRow.addSubview(appHeader)
+        headerRow.addSubview(messageHeader)
         card.addSubview(targetsStack)
 
         NSLayoutConstraint.activate([
@@ -261,12 +274,23 @@ final class AutoMessageViewController: NSViewController {
             title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 12),
             title.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
 
-            hint.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            hint.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 6),
+            headerRow.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            headerRow.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            headerRow.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 8),
+            headerRow.heightAnchor.constraint(equalToConstant: 16),
 
-            targetsStack.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            targetsStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
-            targetsStack.topAnchor.constraint(equalTo: hint.bottomAnchor, constant: 12),
+            enabledHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
+            enabledHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+
+            appHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 68),
+            appHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+
+            messageHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 210),
+            messageHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+
+            targetsStack.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
+            targetsStack.trailingAnchor.constraint(equalTo: headerRow.trailingAnchor),
+            targetsStack.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 8),
         ])
 
         rebuildRows(with: AutoMessageSettings.defaults.targets)
