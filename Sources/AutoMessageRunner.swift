@@ -37,7 +37,7 @@ final class AutoMessageRunner {
                 .joined(separator: "、")
             return AutoMessageRunResult(
                 ok: true,
-                message: "Dry run：将发送到 \(appNames.isEmpty ? "无启用目标" : appNames)"
+                message: "Dry run 已开启：不会粘贴或发送；目标是 \(appNames.isEmpty ? "无启用目标" : appNames)"
             )
         }
 
