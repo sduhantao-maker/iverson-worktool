@@ -2,7 +2,7 @@ import Cocoa
 
 private final class AutoMessageTargetRowView: NSView {
     private let enabledSwitch = ToggleSwitch()
-    private let appField = NSTextField()
+    private let appLabel = NSTextField(labelWithString: "")
     private let messageField = NSTextField()
     private let originalAppName: String
     private let originalProcessName: String
@@ -19,24 +19,27 @@ private final class AutoMessageTargetRowView: NSView {
         enabledSwitch.translatesAutoresizingMaskIntoConstraints = false
         enabledSwitch.isOn = target.enabled
 
-        configure(field: appField, value: target.appName, placeholder: "App")
+        appLabel.translatesAutoresizingMaskIntoConstraints = false
+        appLabel.stringValue = target.appName
+        appLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        appLabel.textColor = .labelColor
         configure(field: messageField, value: target.message, placeholder: "Message")
 
         addSubview(enabledSwitch)
-        addSubview(appField)
+        addSubview(appLabel)
         addSubview(messageField)
 
         NSLayoutConstraint.activate([
-            enabledSwitch.leadingAnchor.constraint(equalTo: leadingAnchor),
+            enabledSwitch.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
             enabledSwitch.centerYAnchor.constraint(equalTo: centerYAnchor),
 
-            appField.leadingAnchor.constraint(equalTo: enabledSwitch.trailingAnchor, constant: 12),
-            appField.topAnchor.constraint(equalTo: topAnchor, constant: 6),
-            appField.widthAnchor.constraint(equalToConstant: 132),
+            appLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 90),
+            appLabel.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
+            appLabel.widthAnchor.constraint(equalToConstant: 128),
 
-            messageField.leadingAnchor.constraint(equalTo: appField.trailingAnchor, constant: 10),
+            messageField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 232),
             messageField.trailingAnchor.constraint(equalTo: trailingAnchor),
-            messageField.topAnchor.constraint(equalTo: appField.topAnchor),
+            messageField.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
         ])
     }
 
@@ -45,7 +48,7 @@ private final class AutoMessageTargetRowView: NSView {
     }
 
     func target() -> AutoMessageTarget {
-        let appName = appField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let appName = originalAppName.trimmingCharacters(in: .whitespacesAndNewlines)
         let processName: String
         if originalProcessName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
             originalProcessName == originalAppName {
@@ -67,7 +70,7 @@ private final class AutoMessageTargetRowView: NSView {
         field.translatesAutoresizingMaskIntoConstraints = false
         field.stringValue = value
         field.placeholderString = placeholder
-        field.font = .systemFont(ofSize: 12)
+        field.font = .systemFont(ofSize: 13)
         field.lineBreakMode = .byTruncatingTail
     }
 }
@@ -246,9 +249,11 @@ final class AutoMessageViewController: NSViewController {
         let icon = SymbolTile(symbol: "bubble.left.and.bubble.right.fill", fill: NSColor.systemBlue.withAlphaComponent(0.13), tint: .systemBlue)
         icon.translatesAutoresizingMaskIntoConstraints = false
         let title = makeLabel("目标与消息", font: .systemFont(ofSize: 14, weight: .semibold), color: .labelColor)
-        let enabledHeader = makeLabel("启用", font: .systemFont(ofSize: 12), color: .secondaryLabelColor)
-        let appHeader = makeLabel("App", font: .systemFont(ofSize: 12), color: .secondaryLabelColor)
-        let messageHeader = makeLabel("Message", font: .systemFont(ofSize: 12), color: .secondaryLabelColor)
+        let headerFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        let headerColor = NSColor.controlTextColor.withAlphaComponent(0.76)
+        let enabledHeader = makeLabel("启用", font: headerFont, color: headerColor)
+        let appHeader = makeLabel("App", font: headerFont, color: headerColor)
+        let messageHeader = makeLabel("Message", font: headerFont, color: headerColor)
         let headerRow = NSView()
         headerRow.translatesAutoresizingMaskIntoConstraints = false
 
@@ -279,13 +284,13 @@ final class AutoMessageViewController: NSViewController {
             headerRow.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 8),
             headerRow.heightAnchor.constraint(equalToConstant: 16),
 
-            enabledHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
+            enabledHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 2),
             enabledHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
 
-            appHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 68),
+            appHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 90),
             appHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
 
-            messageHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 210),
+            messageHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 232),
             messageHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
 
             targetsStack.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
