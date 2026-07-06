@@ -159,8 +159,7 @@ final class AutoMessageRunner {
         let processName = target.processName.trimmingCharacters(in: .whitespacesAndNewlines)
         let message = cleanMessage(target.message, fallback: "")
 
-        let activateScript = "tell application \(appleScriptLiteral(appName)) to activate"
-        let activate = runCommand("/usr/bin/osascript", ["-e", activateScript])
+        let activate = runCommand("/usr/bin/open", ["-a", appName])
         if activate.code != 0 {
             return AutoMessageRunResult(
                 ok: false,
@@ -174,7 +173,22 @@ final class AutoMessageRunner {
         pasteboard.clearContents()
         pasteboard.setString(message, forType: .string)
 
-        let submitScript = submit ? "\ndelay 0.6\nkey code 36" : ""
+        let submitScript: String
+        if submit && processName.localizedCaseInsensitiveContains("claude") {
+            submitScript = """
+
+                delay 0.6
+                try
+                    set sendX to (item 1 of windowPosition) + (item 1 of windowSize) - 86
+                    set sendY to (item 2 of windowPosition) + (item 2 of windowSize) - 72
+                    click at {sendX, sendY}
+                on error
+                    keystroke return using command down
+                end try
+            """
+        } else {
+            submitScript = submit ? "\ndelay 0.6\nkey code 36" : ""
+        }
         let pasteScript = """
         tell application "System Events"
             tell process \(appleScriptLiteral(processName))
