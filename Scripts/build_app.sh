@@ -38,6 +38,16 @@ fi
   "$ROOT/Sources/RootViewController.swift" \
   "$ROOT/Sources/App.swift"
 
+/usr/bin/swiftc \
+  -O \
+  -framework Cocoa \
+  -o "$RESOURCES/keepgoing-automessage" \
+  "$ROOT/Sources/UIComponents.swift" \
+  "$ROOT/Sources/AutoMessageSettings.swift" \
+  "$ROOT/Sources/AutoMessageRunner.swift" \
+  "$ROOT/Sources/automessage_helper.swift"
+/bin/chmod 755 "$RESOURCES/keepgoing-automessage"
+
 /usr/bin/xattr -cr "$APP" || true
 /usr/bin/xattr -d com.apple.FinderInfo "$APP" 2>/dev/null || true
 /usr/bin/codesign --force --deep --sign - "$APP"
