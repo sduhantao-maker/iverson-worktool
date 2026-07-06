@@ -23,3 +23,13 @@ __pycache__/
 # Local secrets/state
 .env
 .env.*
+*.local
+*.tmp
+
+# macOS local app state
+*.app
+*.xcarchive
+
+# Local user settings
+auto-message.json
+Logs/
