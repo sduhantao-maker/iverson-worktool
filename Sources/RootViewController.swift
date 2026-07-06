@@ -87,6 +87,7 @@ private final class SidebarItemButton: NSControl {
 final class RootViewController: NSViewController {
     private let contentHost = NSView()
     private let keepGoingViewController = KeepGoingViewController()
+    private let autoMessageController = AutoMessageViewController()
     private var activeContentViewController: NSViewController?
     private var selectedSection: Section = .keepGoing
     private var sidebarButtons: [Section: SidebarItemButton] = [:]
@@ -161,7 +162,7 @@ final class RootViewController: NSViewController {
         case .keepGoing:
             show(keepGoingViewController)
         case .autoMessage:
-            show(makeAutoMessagePlaceholderController())
+            show(autoMessageController)
         }
     }
 
@@ -185,20 +186,4 @@ final class RootViewController: NSViewController {
         activeContentViewController = viewController
     }
 
-    private func makeAutoMessagePlaceholderController() -> NSViewController {
-        let viewController = NSViewController()
-        let root = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 590))
-        root.wantsLayer = true
-        root.layer?.backgroundColor = NSColor.white.cgColor
-
-        let label = makeLabel("Auto Message", font: .systemFont(ofSize: 22, weight: .semibold), color: .labelColor)
-        root.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: root.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: root.centerYAnchor),
-        ])
-
-        viewController.view = root
-        return viewController
-    }
 }
