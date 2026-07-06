@@ -2,6 +2,7 @@ import Cocoa
 
 private final class AutoMessageTargetRowView: NSView {
     private let enabledSwitch = ToggleSwitch()
+    private let appIconView = NSImageView()
     private let appLabel = NSTextField(labelWithString: "")
     private let messageField = NSTextField()
     private let originalAppName: String
@@ -19,14 +20,19 @@ private final class AutoMessageTargetRowView: NSView {
         enabledSwitch.translatesAutoresizingMaskIntoConstraints = false
         enabledSwitch.isOn = target.enabled
 
+        appIconView.translatesAutoresizingMaskIntoConstraints = false
+        appIconView.image = applicationIcon(named: target.appName)
+        appIconView.imageScaling = .scaleProportionallyUpOrDown
+
         appLabel.translatesAutoresizingMaskIntoConstraints = false
         appLabel.stringValue = target.appName
         appLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         appLabel.textColor = .labelColor
-        appLabel.alignment = .center
+        appLabel.alignment = .left
         configure(field: messageField, value: target.message, placeholder: "Message")
 
         addSubview(enabledSwitch)
+        addSubview(appIconView)
         addSubview(appLabel)
         addSubview(messageField)
 
@@ -34,9 +40,14 @@ private final class AutoMessageTargetRowView: NSView {
             enabledSwitch.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
             enabledSwitch.centerYAnchor.constraint(equalTo: centerYAnchor),
 
-            appLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 104),
+            appIconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 112),
+            appIconView.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
+            appIconView.widthAnchor.constraint(equalToConstant: 22),
+            appIconView.heightAnchor.constraint(equalToConstant: 22),
+
+            appLabel.leadingAnchor.constraint(equalTo: appIconView.trailingAnchor, constant: 8),
             appLabel.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
-            appLabel.widthAnchor.constraint(equalToConstant: 104),
+            appLabel.widthAnchor.constraint(equalToConstant: 86),
 
             messageField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 232),
             messageField.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -73,6 +84,20 @@ private final class AutoMessageTargetRowView: NSView {
         field.placeholderString = placeholder
         field.font = .systemFont(ofSize: 13)
         field.lineBreakMode = .byTruncatingTail
+    }
+
+    private func applicationIcon(named appName: String) -> NSImage {
+        let applicationPaths = [
+            "/Applications/\(appName).app",
+            "\(FileManager.default.homeDirectoryForCurrentUser.path)/Applications/\(appName).app",
+            "/System/Applications/\(appName).app",
+        ]
+
+        for path in applicationPaths where FileManager.default.fileExists(atPath: path) {
+            return NSWorkspace.shared.icon(forFile: path)
+        }
+
+        return NSImage(named: NSImage.applicationIconName) ?? NSImage()
     }
 }
 
