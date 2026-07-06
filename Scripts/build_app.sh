@@ -33,6 +33,7 @@ fi
   "$ROOT/Sources/UIComponents.swift" \
   "$ROOT/Sources/KeepGoingViewController.swift" \
   "$ROOT/Sources/AutoMessageSettings.swift" \
+  "$ROOT/Sources/AutoMessageMessageComposer.swift" \
   "$ROOT/Sources/AutoMessageRunner.swift" \
   "$ROOT/Sources/AutoMessageViewController.swift" \
   "$ROOT/Sources/RootViewController.swift" \
@@ -44,6 +45,7 @@ fi
   -o "$RESOURCES/keepgoing-automessage" \
   "$ROOT/Sources/UIComponents.swift" \
   "$ROOT/Sources/AutoMessageSettings.swift" \
+  "$ROOT/Sources/AutoMessageMessageComposer.swift" \
   "$ROOT/Sources/AutoMessageRunner.swift" \
   "$ROOT/Sources/automessage_helper.swift"
 /bin/chmod 755 "$RESOURCES/keepgoing-automessage"

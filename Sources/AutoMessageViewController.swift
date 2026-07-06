@@ -5,6 +5,9 @@ private final class AutoMessageTargetRowView: NSView {
     private let appIconView = NSImageView()
     private let appLabel = NSTextField(labelWithString: "")
     private let messageField = NSTextField()
+    private let fileButton = NSButton()
+    private let clearFileButton = NSButton()
+    private var filePaths: [String]
     private let originalAppName: String
     private let originalProcessName: String
     private let launchWaitSeconds: Double
@@ -13,6 +16,7 @@ private final class AutoMessageTargetRowView: NSView {
         originalAppName = target.appName
         originalProcessName = target.processName
         launchWaitSeconds = target.launchWaitSeconds
+        filePaths = target.filePaths ?? []
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         heightAnchor.constraint(equalToConstant: 62).isActive = true
@@ -30,11 +34,14 @@ private final class AutoMessageTargetRowView: NSView {
         appLabel.textColor = .labelColor
         appLabel.alignment = .left
         configure(field: messageField, value: target.message, placeholder: "Message")
+        configureFileButtons()
 
         addSubview(enabledSwitch)
         addSubview(appIconView)
         addSubview(appLabel)
         addSubview(messageField)
+        addSubview(fileButton)
+        addSubview(clearFileButton)
 
         NSLayoutConstraint.activate([
             enabledSwitch.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
@@ -50,9 +57,21 @@ private final class AutoMessageTargetRowView: NSView {
             appLabel.widthAnchor.constraint(equalToConstant: 86),
 
             messageField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 232),
-            messageField.trailingAnchor.constraint(equalTo: trailingAnchor),
+            messageField.trailingAnchor.constraint(equalTo: fileButton.leadingAnchor, constant: -8),
             messageField.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
+
+            fileButton.trailingAnchor.constraint(equalTo: clearFileButton.leadingAnchor, constant: -6),
+            fileButton.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
+            fileButton.widthAnchor.constraint(equalToConstant: 72),
+            fileButton.heightAnchor.constraint(equalToConstant: 28),
+
+            clearFileButton.trailingAnchor.constraint(equalTo: trailingAnchor),
+            clearFileButton.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
+            clearFileButton.widthAnchor.constraint(equalToConstant: 28),
+            clearFileButton.heightAnchor.constraint(equalToConstant: 28),
         ])
+
+        updateFileButtonTitle()
     }
 
     required init?(coder: NSCoder) {
@@ -74,6 +93,7 @@ private final class AutoMessageTargetRowView: NSView {
             appName: appName,
             processName: processName,
             message: messageField.stringValue,
+            filePaths: cleanFilePaths(),
             launchWaitSeconds: launchWaitSeconds
         )
     }
@@ -84,6 +104,64 @@ private final class AutoMessageTargetRowView: NSView {
         field.placeholderString = placeholder
         field.font = .systemFont(ofSize: 13)
         field.lineBreakMode = .byTruncatingTail
+    }
+
+    private func configureFileButtons() {
+        fileButton.translatesAutoresizingMaskIntoConstraints = false
+        fileButton.target = self
+        fileButton.action = #selector(selectFile)
+        fileButton.bezelStyle = .rounded
+        fileButton.font = .systemFont(ofSize: 12, weight: .semibold)
+
+        clearFileButton.translatesAutoresizingMaskIntoConstraints = false
+        clearFileButton.target = self
+        clearFileButton.action = #selector(clearFile)
+        clearFileButton.bezelStyle = .rounded
+        clearFileButton.font = .systemFont(ofSize: 12, weight: .semibold)
+        clearFileButton.title = "×"
+    }
+
+    @objc private func selectFile() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.begin { [weak self] response in
+            guard response == .OK, let self else { return }
+            for path in panel.urls.map(\.path) {
+                if !self.filePaths.contains(path) {
+                    self.filePaths.append(path)
+                }
+            }
+            self.updateFileButtonTitle()
+        }
+    }
+
+    @objc private func clearFile() {
+        filePaths = []
+        updateFileButtonTitle()
+    }
+
+    private func cleanFilePaths() -> [String]? {
+        let cleaned = filePaths
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return cleaned.isEmpty ? nil : cleaned
+    }
+
+    private func updateFileButtonTitle() {
+        let paths = cleanFilePaths() ?? []
+        guard !paths.isEmpty else {
+            fileButton.title = "文件"
+            fileButton.toolTip = "追加文件内容"
+            clearFileButton.isHidden = true
+            return
+        }
+
+        let fileNames = paths.map { URL(fileURLWithPath: $0).lastPathComponent }
+        fileButton.title = "\(paths.count) 个文件"
+        fileButton.toolTip = fileNames.joined(separator: "\n")
+        clearFileButton.isHidden = false
     }
 
     private func applicationIcon(named appName: String) -> NSImage {

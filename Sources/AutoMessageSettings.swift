@@ -5,6 +5,7 @@ struct AutoMessageTarget: Codable, Equatable {
     var appName: String
     var processName: String
     var message: String
+    var filePaths: [String]?
     var launchWaitSeconds: Double
 }
 
@@ -30,6 +31,7 @@ struct AutoMessageSettings: Codable, Equatable {
                     appName: "Codex",
                     processName: "Codex",
                     message: "早上好，请继续昨天的任务。",
+                    filePaths: nil,
                     launchWaitSeconds: 8
                 ),
                 AutoMessageTarget(
@@ -37,6 +39,7 @@ struct AutoMessageSettings: Codable, Equatable {
                     appName: "Claude",
                     processName: "Claude",
                     message: "早上好，请总结今天要做的三件事。",
+                    filePaths: nil,
                     launchWaitSeconds: 8
                 ),
             ],
