@@ -173,24 +173,14 @@ final class AutoMessageRunner {
         pasteboard.clearContents()
         pasteboard.setString(message, forType: .string)
 
-        let submitScript: String
-        if submit && processName.localizedCaseInsensitiveContains("claude") {
-            submitScript = """
-
-                delay 0.6
-                try
-                    set sendX to (item 1 of windowPosition) + (item 1 of windowSize) - 86
-                    set sendY to (item 2 of windowPosition) + (item 2 of windowSize) - 72
-                    click at {sendX, sendY}
-                on error
-                    keystroke return using command down
-                end try
-            """
-        } else {
-            submitScript = submit ? "\ndelay 0.6\nkey code 36" : ""
+        let isClaude = processName.localizedCaseInsensitiveContains("claude")
+        if isClaude {
+            Thread.sleep(forTimeInterval: 0.4)
+            _ = clickChatInput(for: processName)
         }
+        let submitScript = (!isClaude && submit) ? "\ndelay 0.6\nkey code 36" : ""
         let pasteCommand: String
-        if processName.localizedCaseInsensitiveContains("claude") {
+        if isClaude {
             pasteCommand = """
                 try
                     click menu item "Paste" of menu "Edit" of menu bar 1
@@ -207,14 +197,6 @@ final class AutoMessageRunner {
             tell process \(appleScriptLiteral(processName))
                 set frontmost to true
                 delay 0.5
-                try
-                    set windowPosition to position of window 1
-                    set windowSize to size of window 1
-                    set clickX to (item 1 of windowPosition) + ((item 1 of windowSize) / 2)
-                    set clickY to (item 2 of windowPosition) + (item 2 of windowSize) - 72
-                    click at {clickX, clickY}
-                    delay 0.25
-                end try
                 \(pasteCommand)\(submitScript)
             end tell
         end tell
@@ -227,6 +209,79 @@ final class AutoMessageRunner {
             )
         }
 
+        if submit && isClaude {
+            Thread.sleep(forTimeInterval: 0.6)
+            if !clickSendButton(for: processName) {
+                let fallback = runCommand("/usr/bin/osascript", [
+                    "-e",
+                    """
+                    tell application "System Events"
+                        tell process \(appleScriptLiteral(processName))
+                            set frontmost to true
+                            keystroke return using command down
+                        end tell
+                    end tell
+                    """,
+                ])
+                if fallback.code != 0 {
+                    return AutoMessageRunResult(
+                        ok: false,
+                        message: "发送到 \(appName) 已粘贴但提交失败：\(cleanMessage(fallback.stderr, fallback: fallback.stdout))"
+                    )
+                }
+            }
+        }
+
         return AutoMessageRunResult(ok: true, message: submit ? "已发送到 \(appName) 并回车提交" : "已发送到 \(appName)")
+    }
+
+    private func clickChatInput(for processName: String) -> Bool {
+        guard let bounds = targetWindowBounds(for: processName) else { return false }
+        return clickScreenPoint(CGPoint(x: bounds.midX, y: bounds.maxY - 72))
+    }
+
+    private func clickSendButton(for processName: String) -> Bool {
+        guard let bounds = targetWindowBounds(for: processName) else { return false }
+        return clickScreenPoint(CGPoint(x: bounds.maxX - 86, y: bounds.maxY - 72))
+    }
+
+    private func targetWindowBounds(for processName: String) -> CGRect? {
+        guard let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] else {
+            return nil
+        }
+
+        for window in windowList {
+            guard
+                let ownerName = window[kCGWindowOwnerName as String] as? String,
+                ownerName.localizedCaseInsensitiveContains(processName),
+                let layer = window[kCGWindowLayer as String] as? Int,
+                layer == 0,
+                let boundsDictionary = window[kCGWindowBounds as String] as? [String: Any]
+            else {
+                continue
+            }
+
+            var bounds = CGRect.zero
+            if CGRectMakeWithDictionaryRepresentation(boundsDictionary as CFDictionary, &bounds) {
+                return bounds
+            }
+        }
+
+        return nil
+    }
+
+    private func clickScreenPoint(_ point: CGPoint) -> Bool {
+        guard
+            let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left),
+            let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left)
+        else {
+            return false
+        }
+
+        down.post(tap: .cghidEventTap)
+        usleep(80_000)
+        up.post(tap: .cghidEventTap)
+        usleep(120_000)
+        return true
     }
 }
