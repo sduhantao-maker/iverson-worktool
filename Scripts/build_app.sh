@@ -31,6 +31,7 @@ fi
   -o "$MACOS/KeepGoing" \
   "$ROOT/Sources/main.swift" \
   "$ROOT/Sources/UIComponents.swift" \
+  "$ROOT/Sources/KeepGoingViewController.swift" \
   "$ROOT/Sources/App.swift"
 
 /usr/bin/xattr -cr "$APP" || true
