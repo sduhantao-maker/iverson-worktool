@@ -5,8 +5,10 @@ private final class AutoMessageTargetRowView: NSView {
     private let appField = NSTextField()
     private let processField = NSTextField()
     private let messageField = NSTextField()
+    private let launchWaitSeconds: Double
 
     init(target: AutoMessageTarget) {
+        launchWaitSeconds = target.launchWaitSeconds
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         heightAnchor.constraint(equalToConstant: 62).isActive = true
@@ -51,7 +53,7 @@ private final class AutoMessageTargetRowView: NSView {
             appName: appField.stringValue,
             processName: processField.stringValue,
             message: messageField.stringValue,
-            launchWaitSeconds: 8
+            launchWaitSeconds: launchWaitSeconds
         )
     }
 
@@ -403,6 +405,10 @@ final class AutoMessageViewController: NSViewController {
             let newSettings = try readSettingsFromUI()
             settings = newSettings
             let helperPath = Bundle.main.resourcePath.map { "\($0)/keepgoing-automessage" } ?? ""
+            guard FileManager.default.isExecutableFile(atPath: helperPath) else {
+                statusLabel.stringValue = "定时助手尚未打包，请先重新构建包含 keepgoing-automessage 的应用。"
+                return
+            }
             let result = runner.installLaunchAgent(helperPath: helperPath, settings: newSettings)
             statusLabel.stringValue = result.message
         } catch {
