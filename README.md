@@ -1,8 +1,10 @@
 # Iverson’s WorkTool
 
-> A small local macOS utility for people who live with AI agents open all day.
+> A small local macOS utility for making AI agents work while you sleep.
 
 Iverson’s WorkTool is a native macOS app built for a very specific workflow: keep the machine awake when long agent tasks are running, and schedule plain-language prompts plus original file attachments to Codex and Claude.
+
+The goal is simple: if your AI plan gives you a limited work window, for example a 5-hour usage block, you should be able to put that window to work at 2 AM instead of waiting until you wake up. The app helps you start the right agent task at the right time, so your computer can keep working through the night.
 
 It is not trying to be a full automation platform. It is closer to a quiet daily workbench for researchers, PhD students, writers, and developers who repeatedly start the same AI-agent routines.
 
@@ -25,8 +27,13 @@ It is the ritual around the model:
 - attach the right paper, spreadsheet, script, or draft
 - hit submit
 - make sure the computer does not sleep halfway through a long run
+- remember when the next limited usage window starts
 
-Iverson’s WorkTool turns that repeated setup into a small local app.
+For agent-heavy work, that last point matters.
+
+If the useful work window is roughly 5 hours, sleeping through it is wasteful. If the window refreshes at a time you did not plan around, your day starts with waiting, copying prompts, attaching files, and manually waking up the agent again.
+
+Iverson’s WorkTool turns that repeated setup into a small local app. You choose when the prompt is sent. You choose what files are attached. You keep the Mac awake. The quota rules still belong to the third-party service, but the timing of your own workflow becomes much more deliberate.
 
 ## Features
 
@@ -37,6 +44,7 @@ KeepGoing toggles macOS power settings so long-running work is less likely to be
 - Enable or disable keep-awake mode
 - Uses a small helper for `pmset`
 - Installs and uninstalls the helper from the app UI
+- Helps overnight agent runs continue while you are away
 
 ### Auto Message
 
@@ -49,6 +57,7 @@ Auto Message schedules prompts to Codex and Claude.
 - Attach one or more original files
 - Optionally submit after paste
 - Install or uninstall the macOS LaunchAgent from the app UI
+- Helps align scheduled prompts with the usage window you want to use
 
 Files are attached as original files. They are not expanded into plain text before being sent.
 
