@@ -28,7 +28,6 @@ fi
 /usr/bin/swiftc \
   -O \
   -framework Cocoa \
-  -framework PDFKit \
   -o "$MACOS/KeepGoing" \
   "$ROOT/Sources/main.swift" \
   "$ROOT/Sources/UIComponents.swift" \
@@ -43,7 +42,6 @@ fi
 /usr/bin/swiftc \
   -O \
   -framework Cocoa \
-  -framework PDFKit \
   -o "$RESOURCES/keepgoing-automessage" \
   "$ROOT/Sources/UIComponents.swift" \
   "$ROOT/Sources/AutoMessageSettings.swift" \

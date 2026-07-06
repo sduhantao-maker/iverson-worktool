@@ -176,8 +176,10 @@ final class AutoMessageRunner {
         }
 
         do {
-            if try AutoMessageMessageComposer.composedMessage(for: target).isEmpty {
-                return AutoMessageRunResult(ok: false, message: "自动消息配置错误：消息或文件内容不能为空")
+            let message = AutoMessageMessageComposer.messageText(for: target)
+            let fileURLs = try AutoMessageMessageComposer.fileURLs(for: target)
+            if message.isEmpty && fileURLs.isEmpty {
+                return AutoMessageRunResult(ok: false, message: "自动消息配置错误：消息或附件不能为空")
             }
         } catch {
             return AutoMessageRunResult(ok: false, message: error.localizedDescription)
@@ -189,9 +191,10 @@ final class AutoMessageRunner {
     private func send(target: AutoMessageTarget, submit: Bool) -> AutoMessageRunResult {
         let appName = target.appName.trimmingCharacters(in: .whitespacesAndNewlines)
         let processName = target.processName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let message: String
+        let message = AutoMessageMessageComposer.messageText(for: target)
+        let fileURLs: [URL]
         do {
-            message = try AutoMessageMessageComposer.composedMessage(for: target)
+            fileURLs = try AutoMessageMessageComposer.fileURLs(for: target)
         } catch {
             return AutoMessageRunResult(ok: false, message: error.localizedDescription)
         }
@@ -206,16 +209,54 @@ final class AutoMessageRunner {
 
         Thread.sleep(forTimeInterval: max(0, target.launchWaitSeconds))
 
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(message, forType: .string)
-
         let isClaude = processName.localizedCaseInsensitiveContains("claude")
         if isClaude {
             Thread.sleep(forTimeInterval: 0.4)
             _ = clickChatInput(for: processName)
         }
-        let submitScript = (!isClaude && submit) ? "\ndelay 0.6\nkey code 36" : ""
+
+        if !message.isEmpty {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(message, forType: .string)
+
+            if let failure = pasteClipboard(to: appName, processName: processName, isClaude: isClaude) {
+                return failure
+            }
+        }
+
+        if !fileURLs.isEmpty {
+            Thread.sleep(forTimeInterval: message.isEmpty ? 0.4 : 0.8)
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            guard pasteboard.writeObjects(fileURLs as [NSURL]) else {
+                return AutoMessageRunResult(
+                    ok: false,
+                    message: "写入附件到剪贴板失败"
+                )
+            }
+
+            if let failure = pasteClipboard(to: appName, processName: processName, isClaude: isClaude) {
+                return failure
+            }
+        }
+
+        if submit {
+            Thread.sleep(forTimeInterval: fileURLs.isEmpty ? 0.8 : 2.0)
+            if let failure = submitMessage(to: appName, processName: processName) {
+                return failure
+            }
+        }
+
+        let fileSummary = fileURLs.isEmpty ? "" : "，附件 \(fileURLs.count) 个"
+        return AutoMessageRunResult(ok: true, message: submit ? "已发送到 \(appName)\(fileSummary) 并回车提交" : "已发送到 \(appName)\(fileSummary)")
+    }
+
+    private func pasteClipboard(
+        to appName: String,
+        processName: String,
+        isClaude: Bool
+    ) -> AutoMessageRunResult? {
         let pasteCommand: String
         if isClaude {
             pasteCommand = """
@@ -234,7 +275,7 @@ final class AutoMessageRunner {
             tell process \(appleScriptLiteral(processName))
                 set frontmost to true
                 delay 0.5
-                \(pasteCommand)\(submitScript)
+                \(pasteCommand)
             end tell
         end tell
         """
@@ -246,28 +287,30 @@ final class AutoMessageRunner {
             )
         }
 
-        if submit && isClaude {
-            let submit = runCommand("/usr/bin/osascript", [
-                "-e",
-                """
-                tell application "System Events"
-                    tell process \(appleScriptLiteral(processName))
-                        set frontmost to true
-                        delay 0.6
-                        key code 36
-                    end tell
+        return nil
+    }
+
+    private func submitMessage(to appName: String, processName: String) -> AutoMessageRunResult? {
+        let submit = runCommand("/usr/bin/osascript", [
+            "-e",
+            """
+            tell application "System Events"
+                tell process \(appleScriptLiteral(processName))
+                    set frontmost to true
+                    delay 0.6
+                    key code 36
                 end tell
-                """,
-            ])
-            if submit.code != 0 {
-                return AutoMessageRunResult(
-                    ok: false,
-                    message: "发送到 \(appName) 已粘贴但提交失败：\(cleanMessage(submit.stderr, fallback: submit.stdout))"
-                )
-            }
+            end tell
+            """,
+        ])
+        if submit.code != 0 {
+            return AutoMessageRunResult(
+                ok: false,
+                message: "发送到 \(appName) 已粘贴但提交失败：\(cleanMessage(submit.stderr, fallback: submit.stdout))"
+            )
         }
 
-        return AutoMessageRunResult(ok: true, message: submit ? "已发送到 \(appName) 并回车提交" : "已发送到 \(appName)")
+        return nil
     }
 
     private func clickChatInput(for processName: String) -> Bool {
