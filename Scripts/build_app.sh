@@ -32,6 +32,7 @@ fi
   "$ROOT/Sources/main.swift" \
   "$ROOT/Sources/UIComponents.swift" \
   "$ROOT/Sources/KeepGoingViewController.swift" \
+  "$ROOT/Sources/AutoMessageSettings.swift" \
   "$ROOT/Sources/RootViewController.swift" \
   "$ROOT/Sources/App.swift"
 
