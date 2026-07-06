@@ -9,6 +9,7 @@ struct AutoMessageTarget: Codable, Equatable {
 }
 
 struct AutoMessageSettings: Codable, Equatable {
+    var startDate: Date?
     var hour: Int
     var minute: Int
     var dryRun: Bool
@@ -18,6 +19,7 @@ struct AutoMessageSettings: Codable, Equatable {
 
     static var defaults: AutoMessageSettings {
         AutoMessageSettings(
+            startDate: Calendar.current.startOfDay(for: Date()),
             hour: 9,
             minute: 30,
             dryRun: true,

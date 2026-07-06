@@ -81,8 +81,8 @@ final class AutoMessageViewController: NSViewController {
     private lazy var runner = AutoMessageRunner(store: store)
     private var settings = AutoMessageSettings.defaults
 
-    private let hourField = NSTextField()
-    private let minuteField = NSTextField()
+    private let startDatePicker = NSDatePicker()
+    private let timePicker = NSDatePicker()
     private let dryRunSwitch = ToggleSwitch()
     private let submitSwitch = ToggleSwitch()
     private let statusLabel = NSTextField(labelWithString: " ")
@@ -197,23 +197,23 @@ final class AutoMessageViewController: NSViewController {
     private func makeScheduleCard() -> NSView {
         let card = CardView()
         card.translatesAutoresizingMaskIntoConstraints = false
-        card.heightAnchor.constraint(equalToConstant: 82).isActive = true
+        card.heightAnchor.constraint(equalToConstant: 92).isActive = true
 
         let icon = SymbolTile(symbol: "clock.fill", fill: NSColor.systemPurple.withAlphaComponent(0.14), tint: .systemPurple)
         icon.translatesAutoresizingMaskIntoConstraints = false
         let title = makeLabel("定时发送", font: .systemFont(ofSize: 14, weight: .semibold), color: .labelColor)
-        let hourLabel = makeLabel("时", font: .systemFont(ofSize: 12), color: .secondaryLabelColor)
-        let minuteLabel = makeLabel("分", font: .systemFont(ofSize: 12), color: .secondaryLabelColor)
+        let dateLabel = makeLabel("开始日期", font: .systemFont(ofSize: 12, weight: .semibold), color: .secondaryLabelColor)
+        let timeLabel = makeLabel("发送时间", font: .systemFont(ofSize: 12, weight: .semibold), color: .secondaryLabelColor)
 
-        configureTimeField(hourField)
-        configureTimeField(minuteField)
+        configureDatePicker(startDatePicker, elements: [.yearMonthDay])
+        configureDatePicker(timePicker, elements: [.hourMinute])
 
         card.addSubview(icon)
         card.addSubview(title)
-        card.addSubview(hourField)
-        card.addSubview(hourLabel)
-        card.addSubview(minuteField)
-        card.addSubview(minuteLabel)
+        card.addSubview(dateLabel)
+        card.addSubview(startDatePicker)
+        card.addSubview(timeLabel)
+        card.addSubview(timePicker)
 
         NSLayoutConstraint.activate([
             icon.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
@@ -224,19 +224,19 @@ final class AutoMessageViewController: NSViewController {
             title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 12),
             title.centerYAnchor.constraint(equalTo: card.centerYAnchor),
 
-            hourField.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 26),
-            hourField.centerYAnchor.constraint(equalTo: card.centerYAnchor),
-            hourField.widthAnchor.constraint(equalToConstant: 54),
+            dateLabel.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 34),
+            dateLabel.centerYAnchor.constraint(equalTo: card.centerYAnchor),
 
-            hourLabel.leadingAnchor.constraint(equalTo: hourField.trailingAnchor, constant: 6),
-            hourLabel.centerYAnchor.constraint(equalTo: hourField.centerYAnchor),
+            startDatePicker.leadingAnchor.constraint(equalTo: dateLabel.trailingAnchor, constant: 10),
+            startDatePicker.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            startDatePicker.widthAnchor.constraint(equalToConstant: 148),
 
-            minuteField.leadingAnchor.constraint(equalTo: hourLabel.trailingAnchor, constant: 20),
-            minuteField.centerYAnchor.constraint(equalTo: hourField.centerYAnchor),
-            minuteField.widthAnchor.constraint(equalToConstant: 54),
+            timeLabel.leadingAnchor.constraint(equalTo: startDatePicker.trailingAnchor, constant: 28),
+            timeLabel.centerYAnchor.constraint(equalTo: card.centerYAnchor),
 
-            minuteLabel.leadingAnchor.constraint(equalTo: minuteField.trailingAnchor, constant: 6),
-            minuteLabel.centerYAnchor.constraint(equalTo: minuteField.centerYAnchor),
+            timePicker.leadingAnchor.constraint(equalTo: timeLabel.trailingAnchor, constant: 10),
+            timePicker.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            timePicker.widthAnchor.constraint(equalToConstant: 96),
         ])
 
         return card
@@ -372,15 +372,18 @@ final class AutoMessageViewController: NSViewController {
         return card
     }
 
-    private func configureTimeField(_ field: NSTextField) {
-        field.translatesAutoresizingMaskIntoConstraints = false
-        field.alignment = .center
-        field.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+    private func configureDatePicker(_ picker: NSDatePicker, elements: NSDatePicker.ElementFlags) {
+        picker.translatesAutoresizingMaskIntoConstraints = false
+        picker.datePickerStyle = .textFieldAndStepper
+        picker.datePickerElements = elements
+        picker.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        picker.isBordered = true
+        picker.drawsBackground = true
     }
 
     private func applySettingsToUI() {
-        hourField.stringValue = "\(settings.hour)"
-        minuteField.stringValue = "\(settings.minute)"
+        startDatePicker.dateValue = settings.startDate ?? Date()
+        timePicker.dateValue = dateValueForTime(hour: settings.hour, minute: settings.minute)
         dryRunSwitch.isOn = settings.dryRun
         submitSwitch.isOn = settings.submitAfterPaste
         rebuildRows(with: settings.targets)
@@ -400,15 +403,13 @@ final class AutoMessageViewController: NSViewController {
     }
 
     private func readSettingsFromUI() throws -> AutoMessageSettings {
-        guard let hour = Int(hourField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)), 0...23 ~= hour else {
-            throw NSError(domain: "AutoMessage", code: 1, userInfo: [NSLocalizedDescriptionKey: "小时必须是 0-23"])
-        }
-
-        guard let minute = Int(minuteField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)), 0...59 ~= minute else {
-            throw NSError(domain: "AutoMessage", code: 2, userInfo: [NSLocalizedDescriptionKey: "分钟必须是 0-59"])
-        }
+        let calendar = Calendar.current
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: timePicker.dateValue)
+        let hour = timeComponents.hour ?? 9
+        let minute = timeComponents.minute ?? 30
 
         return AutoMessageSettings(
+            startDate: calendar.startOfDay(for: startDatePicker.dateValue),
             hour: hour,
             minute: minute,
             dryRun: dryRunSwitch.isOn,
@@ -416,6 +417,14 @@ final class AutoMessageViewController: NSViewController {
             targets: targetRows.map { $0.target() },
             updatedAt: Date()
         )
+    }
+
+    private func dateValueForTime(hour: Int, minute: Int) -> Date {
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        components.hour = min(max(hour, 0), 23)
+        components.minute = min(max(minute, 0), 59)
+        components.second = 0
+        return Calendar.current.date(from: components) ?? Date()
     }
 
     @objc private func testSend() {

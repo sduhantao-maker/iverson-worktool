@@ -42,6 +42,10 @@ final class AutoMessageRunner {
             )
         }
 
+        if let startDateSkip = skipResultBeforeStartDate(settings) {
+            return startDateSkip
+        }
+
         guard accessibilityTrusted(prompt: true) else {
             return AutoMessageRunResult(
                 ok: false,
@@ -61,6 +65,22 @@ final class AutoMessageRunner {
         }
 
         return AutoMessageRunResult(ok: true, message: "自动消息发送完成")
+    }
+
+    private func skipResultBeforeStartDate(_ settings: AutoMessageSettings) -> AutoMessageRunResult? {
+        guard let startDate = settings.startDate else { return nil }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let startDay = calendar.startOfDay(for: startDate)
+        guard today < startDay else { return nil }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return AutoMessageRunResult(
+            ok: true,
+            message: "未到开始日期：\(formatter.string(from: startDay)) 后开始发送"
+        )
     }
 
     func installLaunchAgent(helperPath: String, settings: AutoMessageSettings) -> AutoMessageRunResult {
