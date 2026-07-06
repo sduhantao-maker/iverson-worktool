@@ -175,8 +175,12 @@ final class AutoMessageRunner {
             return AutoMessageRunResult(ok: false, message: "自动消息配置错误：进程名称不能为空")
         }
 
-        if cleanMessage(target.message, fallback: "").isEmpty {
-            return AutoMessageRunResult(ok: false, message: "自动消息配置错误：消息内容不能为空")
+        do {
+            if try AutoMessageMessageComposer.composedMessage(for: target).isEmpty {
+                return AutoMessageRunResult(ok: false, message: "自动消息配置错误：消息或文件内容不能为空")
+            }
+        } catch {
+            return AutoMessageRunResult(ok: false, message: error.localizedDescription)
         }
 
         return nil
@@ -185,7 +189,12 @@ final class AutoMessageRunner {
     private func send(target: AutoMessageTarget, submit: Bool) -> AutoMessageRunResult {
         let appName = target.appName.trimmingCharacters(in: .whitespacesAndNewlines)
         let processName = target.processName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let message = cleanMessage(target.message, fallback: "")
+        let message: String
+        do {
+            message = try AutoMessageMessageComposer.composedMessage(for: target)
+        } catch {
+            return AutoMessageRunResult(ok: false, message: error.localizedDescription)
+        }
 
         let activate = runCommand("/usr/bin/open", ["-a", appName])
         if activate.code != 0 {
