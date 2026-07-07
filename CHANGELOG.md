@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-- Prepared the repository for public open source release.
-- Added privacy, security, contributing, and release documentation.
+## v0.4.1
+
+- Fixed paste shortcuts in app text fields by adding the standard macOS Edit menu.
+- Message fields now support `Cmd+V`, `Cmd+C`, `Cmd+X`, and `Cmd+A`.
 
 ## v0.4.0
 
