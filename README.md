@@ -1,6 +1,10 @@
 # Iverson’s WorkTool
 
-> A small local macOS utility for making AI agents work while you sleep.
+[![Build](https://github.com/sduhantao-maker/iverson-worktool/actions/workflows/build.yml/badge.svg)](https://github.com/sduhantao-maker/iverson-worktool/actions/workflows/build.yml)
+[![Platform: macOS 12+](https://img.shields.io/badge/platform-macOS%2012%2B-blue)](https://www.apple.com/macos/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+> A small local macOS utility for making AI agents work while you sleep — you rest, the agent doesn't.
 
 Iverson’s WorkTool is a native macOS app built for a very specific workflow: keep the machine awake when long agent tasks are running, and schedule plain-language prompts plus original file attachments to Codex and Claude.
 
@@ -33,17 +37,21 @@ For agent-heavy work, that last point matters.
 
 If the useful work window is roughly 5 hours, sleeping through it is wasteful. If the window refreshes at a time you did not plan around, your day starts with waiting, copying prompts, attaching files, and manually waking up the agent again.
 
+There is a subtler lever here too. On plans with a rolling usage window, the refresh clock is anchored to when you *start* a window. Scheduling the first send at a deliberate overnight hour doesn't just put the idle hours to work — it shifts when the next window refreshes, so a fresh quota can land right before your workday instead of midway through the afternoon.
+
 Iverson’s WorkTool turns that repeated setup into a small local app. You choose when the prompt is sent. You choose what files are attached. You keep the Mac awake. The quota rules still belong to the third-party service, but the timing of your own workflow becomes much more deliberate.
 
 ## Features
 
 ### KeepGoing
 
-KeepGoing toggles macOS power settings so long-running work is less likely to be interrupted by sleep.
+KeepGoing toggles macOS power settings so long-running work is less likely to be interrupted by sleep — even with the lid closed and no charger attached.
 
 - Enable or disable keep-awake mode
-- Uses a small helper for `pmset`
-- Installs and uninstalls the helper from the app UI
+- Keeps the Mac awake with the lid closed, on battery (`pmset disablesleep`), so closing the laptop doesn't end an overnight run
+- Keeps network connections alive so scheduled sends and long jobs don't drop offline (`pmset tcpkeepalive`)
+- Disables idle sleep and enables wake-on-network while active (`pmset sleep 0`, `womp`)
+- Uses a small `pmset` helper, installed and uninstalled from the app UI
 - Helps overnight agent runs continue while you are away
 
 ### Auto Message
