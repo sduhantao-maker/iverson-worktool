@@ -41,6 +41,14 @@ There is a subtler lever here too. On plans with a rolling usage window, the ref
 
 Iverson’s WorkTool turns that repeated setup into a small local app. You choose when the prompt is sent. You choose what files are attached. You keep the Mac awake. The quota rules still belong to the third-party service, but the timing of your own workflow becomes much more deliberate.
 
+## How it works overnight
+
+<img src="docs/how-it-works-overnight.svg" alt="Three steps: (1) schedule your prompt and files for Codex and Claude in the evening, (2) enable KeepGoing and close the lid so the Mac stays awake and online, (3) wake to finished work and a fresh quota" width="100%">
+
+1. **Schedule (evening)** — In Auto Message, write the prompt for Codex and Claude, attach the files, and set the daily send time.
+2. **Keep going** — Turn on KeepGoing and close the lid (battery is fine). The Mac stays awake and its network stays alive.
+3. **Wake to results** — At the scheduled time the prompt and files are pasted and submitted. You wake to finished work — and, on rolling-window plans, a fresh quota aligned to your morning.
+
 ## Features
 
 ### KeepGoing
