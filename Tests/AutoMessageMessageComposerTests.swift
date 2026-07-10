@@ -34,5 +34,38 @@ struct AutoMessageMessageComposerTests {
             fputs("Actual: \(fileURLs)\n", stderr)
             exit(1)
         }
+
+        let codexDestination = AutoMessageDestination.resolve(target)
+        guard codexDestination == AutoMessageDestination(
+            displayName: "Codex",
+            applicationName: "ChatGPT",
+            processName: "ChatGPT",
+            bundleIdentifier: "com.openai.codex"
+        ) else {
+            fputs("Expected legacy Codex configuration to target ChatGPT Codex mode.\n", stderr)
+            fputs("Actual: \(codexDestination)\n", stderr)
+            exit(1)
+        }
+
+        let claudeDestination = AutoMessageDestination.resolve(
+            AutoMessageTarget(
+                enabled: true,
+                appName: "Claude",
+                processName: "Claude",
+                message: "",
+                filePaths: nil,
+                launchWaitSeconds: 0
+            )
+        )
+        guard claudeDestination == AutoMessageDestination(
+            displayName: "Claude",
+            applicationName: "Claude",
+            processName: "Claude",
+            bundleIdentifier: nil
+        ) else {
+            fputs("Expected Claude destination to stay unchanged.\n", stderr)
+            fputs("Actual: \(claudeDestination)\n", stderr)
+            exit(1)
+        }
     }
 }
