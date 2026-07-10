@@ -25,7 +25,7 @@ private final class AutoMessageTargetRowView: NSView {
         enabledSwitch.isOn = target.enabled
 
         appIconView.translatesAutoresizingMaskIntoConstraints = false
-        appIconView.image = applicationIcon(named: target.appName)
+        appIconView.image = applicationIcon(named: AutoMessageDestination.resolve(target).applicationName)
         appIconView.imageScaling = .scaleProportionallyUpOrDown
 
         appLabel.translatesAutoresizingMaskIntoConstraints = false

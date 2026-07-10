@@ -33,7 +33,7 @@ final class AutoMessageRunner {
 
         if settings.dryRun {
             let appNames = enabledTargets
-                .map { $0.appName.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .map { AutoMessageDestination.resolve($0).displayName }
                 .filter { !$0.isEmpty }
                 .joined(separator: "、")
             return AutoMessageRunResult(
@@ -189,8 +189,9 @@ final class AutoMessageRunner {
     }
 
     private func send(target: AutoMessageTarget, submit: Bool) -> AutoMessageRunResult {
-        let appName = target.appName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let processName = target.processName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let destination = AutoMessageDestination.resolve(target)
+        let appName = destination.displayName
+        let processName = destination.processName
         let message = AutoMessageMessageComposer.messageText(for: target)
         let fileURLs: [URL]
         do {
@@ -199,7 +200,13 @@ final class AutoMessageRunner {
             return AutoMessageRunResult(ok: false, message: error.localizedDescription)
         }
 
-        let activate = runCommand("/usr/bin/open", ["-a", appName])
+        let activateArguments: [String]
+        if let bundleIdentifier = destination.bundleIdentifier {
+            activateArguments = ["-b", bundleIdentifier]
+        } else {
+            activateArguments = ["-a", destination.applicationName]
+        }
+        let activate = runCommand("/usr/bin/open", activateArguments)
         if activate.code != 0 {
             return AutoMessageRunResult(
                 ok: false,

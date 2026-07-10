@@ -9,6 +9,36 @@ struct AutoMessageTarget: Codable, Equatable {
     var launchWaitSeconds: Double
 }
 
+struct AutoMessageDestination: Equatable {
+    let displayName: String
+    let applicationName: String
+    let processName: String
+    let bundleIdentifier: String?
+
+    static func resolve(_ target: AutoMessageTarget) -> AutoMessageDestination {
+        let appName = target.appName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let processName = target.processName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isCodex = appName.localizedCaseInsensitiveCompare("Codex") == .orderedSame ||
+            processName.localizedCaseInsensitiveCompare("Codex") == .orderedSame
+
+        if isCodex {
+            return AutoMessageDestination(
+                displayName: "Codex",
+                applicationName: "ChatGPT",
+                processName: "ChatGPT",
+                bundleIdentifier: "com.openai.codex"
+            )
+        }
+
+        return AutoMessageDestination(
+            displayName: appName,
+            applicationName: appName,
+            processName: processName,
+            bundleIdentifier: nil
+        )
+    }
+}
+
 struct AutoMessageSettings: Codable, Equatable {
     var startDate: Date?
     var hour: Int
