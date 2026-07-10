@@ -77,6 +77,21 @@ Auto Message schedules prompts to Codex and Claude.
 
 Files are attached as original files. They are not expanded into plain text before being sent.
 
+## Version history
+
+The project has evolved from a keep-awake utility into a small overnight agent workbench. These are the user-facing changes that materially changed how it works:
+
+| Version | What changed for users |
+| --- | --- |
+| **v0.4.2** | Updated Codex delivery for the current ChatGPT desktop app (Codex mode). Existing `Codex` settings now open bundle ID `com.openai.codex` and automate the `ChatGPT` process automatically. Prompts and attachments need no reconfiguration; reinstall the schedule only when moving the app to a different path. |
+| **v0.4.1** | Added the standard macOS Edit menu. Message fields now support familiar shortcuts including `Cmd+V`, `Cmd+C`, `Cmd+X`, and `Cmd+A`, so prompts can be pasted instead of typed manually. |
+| **v0.4.0** | Changed attachments from expanded file text to original file attachments. Codex and Claude now receive the actual document, spreadsheet, PDF, script, or Markdown file selected by the user. |
+| **v0.3.0** | Added multi-file selection for each target. A single scheduled prompt can now carry several research papers, datasets, drafts, or scripts. |
+| **v0.2.0** | Added Auto Message: per-target prompts for Codex and Claude, daily scheduling through a macOS LaunchAgent, start-date and time selection, dry runs, and optional automatic submission. |
+| **v0.1.0** | Added KeepGoing: a local macOS keep-awake tool for long-running work, including lid-closed operation and network continuity. |
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete chronological record.
+
 ## Supported Targets
 
 The app currently has fixed rows for:
