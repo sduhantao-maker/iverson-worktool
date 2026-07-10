@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.4.2
+
+- Updated Codex Auto Message delivery for ChatGPT desktop app (Codex mode).
+- Existing `Codex` configurations now launch bundle ID `com.openai.codex` and target the `ChatGPT` process without reconfiguration.
+
 ## v0.4.1
 
 - Fixed paste shortcuts in app text fields by adding the standard macOS Edit menu.
