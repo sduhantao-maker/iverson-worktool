@@ -1,7 +1,7 @@
 # Iverson’s WorkTool
 
 [![Build](https://github.com/sduhantao-maker/iverson-worktool/actions/workflows/build.yml/badge.svg)](https://github.com/sduhantao-maker/iverson-worktool/actions/workflows/build.yml)
-[![Platform: macOS 12+](https://img.shields.io/badge/platform-macOS%2012%2B-blue)](https://www.apple.com/macos/)
+[![Platform: macOS 13+](https://img.shields.io/badge/platform-macOS%2013%2B-blue)](https://www.apple.com/macos/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 > A small local macOS utility for making AI agents work while you sleep — you rest, the agent doesn't.
@@ -59,7 +59,9 @@ KeepGoing toggles macOS power settings so long-running work is less likely to be
 - Keeps the Mac awake with the lid closed, on battery (`pmset disablesleep`), so closing the laptop doesn't end an overnight run
 - Keeps network connections alive so scheduled sends and long jobs don't drop offline (`pmset tcpkeepalive`)
 - Disables idle sleep and enables wake-on-network while active (`pmset sleep 0`, `womp`)
-- Uses a small `pmset` helper, installed and uninstalled from the app UI
+- Turning it off restores the sleep settings you had before, per power source
+- Switches itself off at a time you choose (default 08:00) and when the battery falls to a floor you choose (default 20%), even after you quit the app
+- Uses a small `pmset` helper, installed from the app UI; the app tells you when the installed helper is out of date
 - Helps overnight agent runs continue while you are away
 
 ### Auto Message
@@ -72,10 +74,21 @@ Auto Message schedules prompts to Codex and Claude.
 - Write a different message for Codex and Claude
 - Attach one or more original files
 - Optionally submit after paste
-- Install or uninstall the macOS LaunchAgent from the app UI
+- Install or uninstall the macOS LaunchAgent from the app UI; the schedule card shows whether it is installed and at what time
+- Saves every edit automatically; changing the time moves an installed schedule
+- Sends to each target on its own, so one failing app does not stop the other
+- Skips a scheduled run that starts more than 30 minutes late (launchd runs missed jobs when the Mac wakes), so it never fires while you are using the computer
+- Does not type into a locked screen: a run with the screen locked fails and says so in the log
+- Puts your clipboard back after a send
 - Helps align scheduled prompts with the usage window you want to use
 
 Files are attached as original files. They are not expanded into plain text before being sent.
+
+Every scheduled run writes one timestamped line to the log, for example:
+
+```text
+2026-11-24T02:00:03+01:00 [sent] 已发送到 Codex 并回车提交
+```
 
 ## Version history
 
@@ -83,6 +96,7 @@ The project has evolved from a keep-awake utility into a small overnight agent w
 
 | Version | What changed for users |
 | --- | --- |
+| **Unreleased (v0.5.0)** | Safer overnight runs: KeepGoing restores your own sleep settings and switches itself off at a set time or on low battery; Auto Message saves edits automatically, sends each target independently, skips runs that start late and refuses to type into a locked screen. New glass controls with physics-based motion, full Dark Mode, and a universal build (Apple silicon and Intel) for macOS 13 and later. |
 | **v0.4.2** | Updated Codex delivery for the current ChatGPT desktop app (Codex mode). Existing `Codex` settings now open bundle ID `com.openai.codex` and automate the `ChatGPT` process automatically. Prompts and attachments need no reconfiguration; reinstall the schedule only when moving the app to a different path. |
 | **v0.4.1** | Added the standard macOS Edit menu. Message fields now support familiar shortcuts including `Cmd+V`, `Cmd+C`, `Cmd+X`, and `Cmd+A`, so prompts can be pasted instead of typed manually. |
 | **v0.4.0** | Changed attachments from expanded file text to original file attachments. Codex and Claude now receive the actual document, spreadsheet, PDF, script, or Markdown file selected by the user. |
@@ -117,7 +131,7 @@ Release builds are currently ad-hoc signed and not notarized by Apple. macOS may
 
 Requirements:
 
-- macOS 12 or later
+- macOS 13 or later (the build is universal: Apple silicon and Intel)
 - Xcode Command Line Tools
 
 Build:
@@ -217,6 +231,15 @@ Helper commands:
 keepgoing-helper status
 keepgoing-helper enable
 keepgoing-helper disable
+```
+
+`enable` saves your current `sleep`, `womp` and `tcpkeepalive` values for each power source to `/var/db/keepgoing/pmset-snapshot` (root only) before changing them. `disable` puts them back and deletes the snapshot.
+
+The auto-off guard is a user LaunchAgent that runs the app's own executable every two minutes while KeepGoing is on. It needs no extra privileges: it calls the same `sudo -n keepgoing-helper disable` that the sudoers rule already allows, then removes itself.
+
+```text
+~/Library/LaunchAgents/com.iverson.keepgoing.guard.plist
+~/Library/Application Support/KeepGoing/Logs/keepgoing-guard.log
 ```
 
 ## Tests

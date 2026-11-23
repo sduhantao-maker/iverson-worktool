@@ -1,71 +1,56 @@
 import Foundation
 
-@main
-struct AutoMessageMessageComposerTests {
-    static func main() throws {
-        let tempDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("AutoMessageMessageComposerTests", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+func composerTests() throws {
+    let tempDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("AutoMessageMessageComposerTests", isDirectory: true)
+    try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
 
-        let firstFileURL = tempDirectory.appendingPathComponent("first.docx")
-        let secondFileURL = tempDirectory.appendingPathComponent("second.pdf")
-        try "docx bytes stay attached".write(to: firstFileURL, atomically: true, encoding: .utf8)
-        try "pdf bytes stay attached".write(to: secondFileURL, atomically: true, encoding: .utf8)
+    let firstFileURL = tempDirectory.appendingPathComponent("first.docx")
+    let secondFileURL = tempDirectory.appendingPathComponent("second.pdf")
+    try "docx bytes stay attached".write(to: firstFileURL, atomically: true, encoding: .utf8)
+    try "pdf bytes stay attached".write(to: secondFileURL, atomically: true, encoding: .utf8)
 
-        let target = AutoMessageTarget(
-            enabled: true,
-            appName: "Codex",
-            processName: "Codex",
-            message: "请阅读附件并总结。",
-            filePaths: [firstFileURL.path, secondFileURL.path],
-            launchWaitSeconds: 0
-        )
+    let target = AutoMessageTarget(
+        enabled: true,
+        appName: "Codex",
+        processName: "Codex",
+        message: "请阅读附件并总结。",
+        filePaths: [firstFileURL.path, secondFileURL.path],
+        launchWaitSeconds: 0
+    )
 
-        let message = AutoMessageMessageComposer.messageText(for: target)
-        guard message == "请阅读附件并总结。" else {
-            fputs("Expected message text to stay separate from files.\n", stderr)
-            fputs("Actual: \(message)\n", stderr)
-            exit(1)
-        }
+    check(
+        AutoMessageMessageComposer.messageText(for: target) == "请阅读附件并总结。",
+        "message text stays separate from files"
+    )
+    let fileURLs = try AutoMessageMessageComposer.fileURLs(for: target)
+    check(fileURLs == [firstFileURL, secondFileURL], "original file URLs are kept for the attachment paste")
 
-        let fileURLs = try AutoMessageMessageComposer.fileURLs(for: target)
-        guard fileURLs == [firstFileURL, secondFileURL] else {
-            fputs("Expected original file URLs to be preserved for attachment paste.\n", stderr)
-            fputs("Actual: \(fileURLs)\n", stderr)
-            exit(1)
-        }
-
-        let codexDestination = AutoMessageDestination.resolve(target)
-        guard codexDestination == AutoMessageDestination(
+    check(
+        AutoMessageDestination.resolve(target) == AutoMessageDestination(
             displayName: "Codex",
             applicationName: "ChatGPT",
             processName: "ChatGPT",
             bundleIdentifier: "com.openai.codex"
-        ) else {
-            fputs("Expected legacy Codex configuration to target ChatGPT Codex mode.\n", stderr)
-            fputs("Actual: \(codexDestination)\n", stderr)
-            exit(1)
-        }
+        ),
+        "a legacy Codex configuration targets ChatGPT in Codex mode"
+    )
 
-        let claudeDestination = AutoMessageDestination.resolve(
-            AutoMessageTarget(
-                enabled: true,
-                appName: "Claude",
-                processName: "Claude",
-                message: "",
-                filePaths: nil,
-                launchWaitSeconds: 0
-            )
-        )
-        guard claudeDestination == AutoMessageDestination(
+    let claude = AutoMessageTarget(
+        enabled: true,
+        appName: "Claude",
+        processName: "Claude",
+        message: "",
+        filePaths: nil,
+        launchWaitSeconds: 0
+    )
+    check(
+        AutoMessageDestination.resolve(claude) == AutoMessageDestination(
             displayName: "Claude",
             applicationName: "Claude",
             processName: "Claude",
             bundleIdentifier: nil
-        ) else {
-            fputs("Expected Claude destination to stay unchanged.\n", stderr)
-            fputs("Actual: \(claudeDestination)\n", stderr)
-            exit(1)
-        }
-    }
+        ),
+        "the Claude destination is unchanged"
+    )
 }

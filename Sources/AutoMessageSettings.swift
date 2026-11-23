@@ -81,14 +81,18 @@ struct AutoMessageSettings: Codable, Equatable {
 final class AutoMessageSettingsStore {
     let fileURL: URL
 
-    init() {
+    convenience init() {
         let applicationSupportURL = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        fileURL = applicationSupportURL
+        self.init(fileURL: applicationSupportURL
             .appendingPathComponent("KeepGoing", isDirectory: true)
-            .appendingPathComponent("auto-message.json", isDirectory: false)
+            .appendingPathComponent("auto-message.json", isDirectory: false))
+    }
+
+    init(fileURL: URL) {
+        self.fileURL = fileURL
     }
 
     func load() throws -> AutoMessageSettings {

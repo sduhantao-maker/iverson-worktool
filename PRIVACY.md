@@ -30,6 +30,20 @@ The scheduled LaunchAgent is stored locally:
 ~/Library/LaunchAgents/com.iverson.keepgoing.automessage.plist
 ```
 
+KeepGoing's auto-off rules and its guard are stored locally while KeepGoing is on:
+
+```text
+~/Library/Application Support/KeepGoing/keepgoing.json
+~/Library/Application Support/KeepGoing/keepgoing-guard.json
+~/Library/LaunchAgents/com.iverson.keepgoing.guard.plist
+```
+
+Your original power settings are saved by the root helper until KeepGoing is turned off:
+
+```text
+/var/db/keepgoing/pmset-snapshot
+```
+
 ## File Attachments
 
 When you select files in Auto Message, the app stores local file paths in its settings file.

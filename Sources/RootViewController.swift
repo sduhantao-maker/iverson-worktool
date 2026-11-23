@@ -28,7 +28,7 @@ private final class SidebarItemButton: NSControl {
     private let label: NSTextField
     private let onSelect: () -> Void
 
-    var isSelectedItem: Bool = false {
+    var isSelectedItem = false {
         didSet { updateAppearance() }
     }
 
@@ -38,15 +38,10 @@ private final class SidebarItemButton: NSControl {
         super.init(frame: .zero)
 
         translatesAutoresizingMaskIntoConstraints = false
-        wantsLayer = true
-        layer?.cornerRadius = 8
 
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.imageScaling = .scaleProportionallyDown
-        imageView.contentTintColor = .systemBlue
-        if #available(macOS 11.0, *) {
-            imageView.image = NSImage(systemSymbolName: section.symbol, accessibilityDescription: nil)
-        }
+        imageView.image = NSImage(systemSymbolName: section.symbol, accessibilityDescription: nil)
 
         addSubview(imageView)
         addSubview(label)
@@ -64,6 +59,9 @@ private final class SidebarItemButton: NSControl {
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
 
+        setAccessibilityElement(true)
+        setAccessibilityRole(.radioButton)
+        setAccessibilityLabel(section.title)
         updateAppearance()
     }
 
@@ -75,45 +73,71 @@ private final class SidebarItemButton: NSControl {
         onSelect()
     }
 
+    override func accessibilityPerformPress() -> Bool {
+        onSelect()
+        return true
+    }
+
     private func updateAppearance() {
-        layer?.backgroundColor = isSelectedItem
-            ? NSColor.systemBlue.withAlphaComponent(0.12).cgColor
-            : NSColor.clear.cgColor
         label.textColor = isSelectedItem ? .labelColor : .secondaryLabelColor
-        imageView.contentTintColor = .systemBlue
+        imageView.contentTintColor = .controlAccentColor
+        setAccessibilityValue(isSelectedItem ? 1 : 0)
     }
 }
 
 final class RootViewController: NSViewController {
-    private let contentHost = NSView()
-    private let keepGoingViewController = KeepGoingViewController()
-    private let autoMessageController = AutoMessageViewController()
+    private let contentHost = FillView(color: Palette.windowBackground)
+    private let keepGoingViewController: KeepGoingViewController
+    private let autoMessageController: AutoMessageViewController
     private var activeContentViewController: NSViewController?
     private var selectedSection: Section = .keepGoing
     private var sidebarButtons: [Section: SidebarItemButton] = [:]
+    private let sidebarIndicator = GooeyIndicator(axis: .vertical)
+    private var isIndicatorRetryPending = false
+
+    init(
+        keepGoing: KeepGoingViewController = KeepGoingViewController(),
+        autoMessage: AutoMessageViewController = AutoMessageViewController()
+    ) {
+        keepGoingViewController = keepGoing
+        autoMessageController = autoMessage
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
 
     override func loadView() {
-        let root = NSView(frame: NSRect(x: 0, y: 0, width: 1010, height: 590))
-        root.wantsLayer = true
-        root.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        let root = FillView(color: Palette.windowBackground)
+        root.frame = NSRect(x: 0, y: 0, width: 1010, height: 590)
         view = root
         buildUI(in: root)
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        select(.keepGoing)
+        select(.keepGoing, animated: false)
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        placeIndicator(animated: false)
     }
 
     private func buildUI(in root: NSView) {
-        let sidebar = NSView()
+        // A real sidebar material: translucent, and correct in Light and Dark Mode.
+        let sidebar = NSVisualEffectView()
         sidebar.translatesAutoresizingMaskIntoConstraints = false
-        sidebar.wantsLayer = true
-        sidebar.layer?.backgroundColor = NSColor(calibratedWhite: 0.94, alpha: 1).cgColor
+        sidebar.material = .sidebar
+        sidebar.blendingMode = .behindWindow
+        sidebar.state = .followsWindowActiveState
 
         contentHost.translatesAutoresizingMaskIntoConstraints = false
-        contentHost.wantsLayer = true
-        contentHost.layer?.backgroundColor = NSColor(calibratedWhite: 0.98, alpha: 1).cgColor
+
+        sidebarIndicator.translatesAutoresizingMaskIntoConstraints = false
+        sidebarIndicator.cornerRadius = 9
+        sidebarIndicator.tintAlpha = 0.14
 
         let stack = NSStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -123,6 +147,7 @@ final class RootViewController: NSViewController {
 
         root.addSubview(sidebar)
         root.addSubview(contentHost)
+        sidebar.addSubview(sidebarIndicator)
         sidebar.addSubview(stack)
 
         NSLayoutConstraint.activate([
@@ -130,6 +155,11 @@ final class RootViewController: NSViewController {
             sidebar.topAnchor.constraint(equalTo: root.topAnchor),
             sidebar.bottomAnchor.constraint(equalTo: root.bottomAnchor),
             sidebar.widthAnchor.constraint(equalToConstant: 210),
+
+            sidebarIndicator.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor),
+            sidebarIndicator.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor),
+            sidebarIndicator.topAnchor.constraint(equalTo: sidebar.topAnchor),
+            sidebarIndicator.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor),
 
             contentHost.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor),
             contentHost.trailingAnchor.constraint(equalTo: root.trailingAnchor),
@@ -144,7 +174,7 @@ final class RootViewController: NSViewController {
 
         for section in Section.allCases {
             let button = SidebarItemButton(section: section) { [weak self] in
-                self?.select(section)
+                self?.select(section, animated: true)
             }
             sidebarButtons[section] = button
             stack.addArrangedSubview(button)
@@ -152,7 +182,7 @@ final class RootViewController: NSViewController {
         }
     }
 
-    private func select(_ section: Section) {
+    private func select(_ section: Section, animated: Bool) {
         selectedSection = section
         for (buttonSection, button) in sidebarButtons {
             button.isSelectedItem = buttonSection == section
@@ -164,6 +194,24 @@ final class RootViewController: NSViewController {
         case .autoMessage:
             show(autoMessageController)
         }
+        placeIndicator(animated: animated)
+    }
+
+    private func placeIndicator(animated: Bool) {
+        guard let button = sidebarButtons[selectedSection], button.superview != nil else { return }
+        let rect = button.convert(button.bounds, to: sidebarIndicator)
+        guard rect.width > 0, rect.height > 0 else {
+            // The stack view sizes its buttons later in the same layout pass; try once more after it.
+            if !isIndicatorRetryPending {
+                isIndicatorRetryPending = true
+                DispatchQueue.main.async { [weak self] in
+                    self?.isIndicatorRetryPending = false
+                    self?.placeIndicator(animated: false)
+                }
+            }
+            return
+        }
+        sidebarIndicator.move(to: rect, tint: .controlAccentColor, animated: animated)
     }
 
     private func show(_ viewController: NSViewController) {
@@ -185,5 +233,4 @@ final class RootViewController: NSViewController {
         ])
         activeContentViewController = viewController
     }
-
 }

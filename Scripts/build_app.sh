@@ -2,6 +2,8 @@
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+MIN_MACOS="13.0"
+ARCHS=(arm64 x86_64)
 BUILD_ROOT="$(/usr/bin/mktemp -d /tmp/KeepGoing-build.XXXXXX)"
 trap '/bin/rm -rf "$BUILD_ROOT"' EXIT
 APP="$BUILD_ROOT/Iverson’s WorkTool.app"
@@ -9,6 +11,56 @@ FINAL_APP="$ROOT/dist/Iverson’s WorkTool.app"
 CONTENTS="$APP/Contents"
 MACOS="$CONTENTS/MacOS"
 RESOURCES="$CONTENTS/Resources"
+
+APP_SOURCES=(
+  main.swift
+  Shell.swift
+  Palette.swift
+  GlassControls.swift
+  UIComponents.swift
+  KeepGoingPower.swift
+  KeepGoingViewController.swift
+  AutoMessageSettings.swift
+  AutoMessageMessageComposer.swift
+  AutoMessageRunner.swift
+  AutoMessageViewController.swift
+  RootViewController.swift
+  App.swift
+)
+
+HELPER_SOURCES=(
+  Shell.swift
+  AutoMessageSettings.swift
+  AutoMessageMessageComposer.swift
+  AutoMessageRunner.swift
+  automessage_helper.swift
+)
+
+# compile <output> <source...>: one slice per architecture, joined into a universal binary.
+# The explicit -target pins the minimum macOS; without it swiftc uses the build machine's.
+compile() {
+  local output="$1"
+  shift
+  local sources=()
+  local source
+  for source in "$@"; do
+    sources+=("$ROOT/Sources/$source")
+  done
+  local slices=()
+  local arch
+  for arch in $ARCHS; do
+    local slice="$BUILD_ROOT/${output:t}.$arch"
+    /usr/bin/xcrun swiftc \
+      -O \
+      -target "$arch-apple-macos$MIN_MACOS" \
+      -framework Cocoa \
+      -framework IOKit \
+      -o "$slice" \
+      "${sources[@]}"
+    slices+=("$slice")
+  done
+  /usr/bin/lipo -create -output "$output" "${slices[@]}"
+}
 
 /bin/rm -rf "$FINAL_APP" "$ROOT/dist/KeepGoing.app" "$ROOT/dist/keepgoing.app"
 /bin/mkdir -p "$MACOS" "$RESOURCES"
@@ -25,34 +77,15 @@ else
   /usr/bin/python3 "$ROOT/Scripts/make_icon.py" "$RESOURCES/AppIcon.icns"
 fi
 
-/usr/bin/swiftc \
-  -O \
-  -framework Cocoa \
-  -o "$MACOS/KeepGoing" \
-  "$ROOT/Sources/main.swift" \
-  "$ROOT/Sources/UIComponents.swift" \
-  "$ROOT/Sources/KeepGoingViewController.swift" \
-  "$ROOT/Sources/AutoMessageSettings.swift" \
-  "$ROOT/Sources/AutoMessageMessageComposer.swift" \
-  "$ROOT/Sources/AutoMessageRunner.swift" \
-  "$ROOT/Sources/AutoMessageViewController.swift" \
-  "$ROOT/Sources/RootViewController.swift" \
-  "$ROOT/Sources/App.swift"
-
-/usr/bin/swiftc \
-  -O \
-  -framework Cocoa \
-  -o "$RESOURCES/keepgoing-automessage" \
-  "$ROOT/Sources/UIComponents.swift" \
-  "$ROOT/Sources/AutoMessageSettings.swift" \
-  "$ROOT/Sources/AutoMessageMessageComposer.swift" \
-  "$ROOT/Sources/AutoMessageRunner.swift" \
-  "$ROOT/Sources/automessage_helper.swift"
+compile "$MACOS/KeepGoing" "${APP_SOURCES[@]}"
+compile "$RESOURCES/keepgoing-automessage" "${HELPER_SOURCES[@]}"
 /bin/chmod 755 "$RESOURCES/keepgoing-automessage"
 
 /usr/bin/xattr -cr "$APP" || true
 /usr/bin/xattr -d com.apple.FinderInfo "$APP" 2>/dev/null || true
-/usr/bin/codesign --force --deep --sign - "$APP"
+# Sign the nested helper first, then the app around it.
+/usr/bin/codesign --force --sign - --identifier com.iverson.keepgoing.automessage "$RESOURCES/keepgoing-automessage"
+/usr/bin/codesign --force --sign - "$APP"
 /usr/bin/xattr -d com.apple.FinderInfo "$APP" 2>/dev/null || true
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"
 

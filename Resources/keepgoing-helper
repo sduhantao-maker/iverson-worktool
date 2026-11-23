@@ -1,21 +1,64 @@
 #!/bin/zsh
 set -eu
 
+# Runs as root through a sudoers rule that allows exactly: status, enable, disable.
 PMSET="/usr/bin/pmset"
+SNAPSHOT_DIR="/var/db/keepgoing"
+SNAPSHOT="$SNAPSHOT_DIR/pmset-snapshot"
 
 usage() {
   echo "usage: keepgoing-helper status|enable|disable" >&2
   exit 64
 }
 
+sleep_disabled() {
+  "$PMSET" -g | /usr/bin/awk '$1 == "SleepDisabled" { print $2; found=1; exit } END { if (!found) print "0" }'
+}
+
 status() {
-  local value
-  value="$("$PMSET" -g | /usr/bin/awk '$1 == "SleepDisabled" { print $2; found=1; exit } END { if (!found) print "0" }')"
-  if [[ "$value" == "1" ]]; then
+  if [[ "$(sleep_disabled)" == "1" ]]; then
     echo "enabled"
   else
     echo "normal"
   fi
+}
+
+# Saves the per-power-source values that enable changes, once, before KeepGoing first
+# changes them. Lines look like: -b sleep 1
+take_snapshot() {
+  if [[ -f "$SNAPSHOT" ]]; then
+    return 0
+  fi
+  if [[ "$(sleep_disabled)" == "1" ]]; then
+    # Already on (an older helper turned it on): the current values are not the originals.
+    return 0
+  fi
+  /bin/mkdir -p -m 0700 "$SNAPSHOT_DIR"
+  "$PMSET" -g custom | /usr/bin/awk '
+    /^Battery Power:/ { flag = "-b"; next }
+    /^AC Power:/      { flag = "-c"; next }
+    /^UPS Power:/     { flag = "-u"; next }
+    /^[^ \t]/         { flag = ""; next }
+    flag != "" && ($1 == "sleep" || $1 == "womp" || $1 == "tcpkeepalive") && $2 ~ /^[0-9]+$/ { print flag, $1, $2 }
+  ' > "$SNAPSHOT.tmp"
+  /bin/mv "$SNAPSHOT.tmp" "$SNAPSHOT"
+}
+
+# Puts back the values from the snapshot. Without one (KeepGoing was turned on by an
+# older helper), it falls back to the old behaviour: system sleep after 1 minute idle.
+restore_snapshot() {
+  if [[ ! -f "$SNAPSHOT" ]]; then
+    "$PMSET" -a sleep 1
+    return 0
+  fi
+  local flag key value
+  while read -r flag key value; do
+    case "$flag" in -b|-c|-u) ;; *) continue ;; esac
+    case "$key" in sleep|womp|tcpkeepalive) ;; *) continue ;; esac
+    [[ "$value" == <-> ]] || continue
+    "$PMSET" "$flag" "$key" "$value"
+  done < "$SNAPSHOT"
+  /bin/rm -f "$SNAPSHOT"
 }
 
 case "${1:-}" in
@@ -23,6 +66,7 @@ case "${1:-}" in
     status
     ;;
   enable)
+    take_snapshot
     "$PMSET" -a disablesleep 1
     "$PMSET" -a sleep 0
     "$PMSET" -a tcpkeepalive 1
@@ -31,7 +75,7 @@ case "${1:-}" in
     ;;
   disable)
     "$PMSET" -a disablesleep 0
-    "$PMSET" -a sleep 1
+    restore_snapshot
     echo "normal"
     ;;
   *)

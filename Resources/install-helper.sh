@@ -18,7 +18,11 @@ if [[ ! -f "$HELPER_SOURCE" ]]; then
   exit 66
 fi
 
-/usr/bin/install -d -o root -g wheel -m 0755 /usr/local/bin
+# `install -d` also re-applies owner and mode to a directory that already exists. On an
+# Intel Mac, Homebrew owns /usr/local/bin, so only create it when it is missing.
+if [[ ! -d /usr/local/bin ]]; then
+  /usr/bin/install -d -o root -g wheel -m 0755 /usr/local/bin
+fi
 /usr/bin/install -o root -g wheel -m 0755 "$HELPER_SOURCE" "$HELPER_TARGET"
 /bin/rm -f /etc/sudoers.d/clamshell-wifi /usr/local/bin/clamshell-wifi-helper
 

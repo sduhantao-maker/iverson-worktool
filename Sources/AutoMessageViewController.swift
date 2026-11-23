@@ -1,16 +1,19 @@
 import Cocoa
 
-private final class AutoMessageTargetRowView: NSView {
+private final class AutoMessageTargetRowView: NSView, NSTextFieldDelegate {
     private let enabledSwitch = ToggleSwitch()
     private let appIconView = NSImageView()
     private let appLabel = NSTextField(labelWithString: "")
     private let messageField = NSTextField()
-    private let fileButton = NSButton()
-    private let clearFileButton = NSButton()
+    private let fileButton = GlassButton(title: "文件", symbol: "paperclip", style: .secondary, size: .small)
+    private let clearFileButton = GlassButton(icon: "xmark", toolTip: "清除附件", size: .small)
     private var filePaths: [String]
     private let originalAppName: String
     private let originalProcessName: String
     private let launchWaitSeconds: Double
+
+    /// Called after every edit in this row.
+    var onChange: (() -> Void)?
 
     init(target: AutoMessageTarget) {
         originalAppName = target.appName
@@ -22,7 +25,10 @@ private final class AutoMessageTargetRowView: NSView {
         heightAnchor.constraint(equalToConstant: 62).isActive = true
 
         enabledSwitch.translatesAutoresizingMaskIntoConstraints = false
-        enabledSwitch.isOn = target.enabled
+        enabledSwitch.setOn(target.enabled, animated: false)
+        enabledSwitch.target = self
+        enabledSwitch.action = #selector(controlChanged)
+        enabledSwitch.setAccessibilityLabel("启用 \(target.appName)")
 
         appIconView.translatesAutoresizingMaskIntoConstraints = false
         appIconView.image = applicationIcon(named: AutoMessageDestination.resolve(target).applicationName)
@@ -33,15 +39,22 @@ private final class AutoMessageTargetRowView: NSView {
         appLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         appLabel.textColor = .labelColor
         appLabel.alignment = .left
-        configure(field: messageField, value: target.message, placeholder: "Message")
-        configureFileButtons()
 
-        addSubview(enabledSwitch)
-        addSubview(appIconView)
-        addSubview(appLabel)
-        addSubview(messageField)
-        addSubview(fileButton)
-        addSubview(clearFileButton)
+        messageField.translatesAutoresizingMaskIntoConstraints = false
+        messageField.stringValue = target.message
+        messageField.placeholderString = "Message"
+        messageField.font = .systemFont(ofSize: 13)
+        messageField.lineBreakMode = .byTruncatingTail
+        messageField.delegate = self
+
+        fileButton.translatesAutoresizingMaskIntoConstraints = false
+        fileButton.target = self
+        fileButton.action = #selector(selectFile)
+        clearFileButton.translatesAutoresizingMaskIntoConstraints = false
+        clearFileButton.target = self
+        clearFileButton.action = #selector(clearFile)
+
+        [enabledSwitch, appIconView, appLabel, messageField, fileButton, clearFileButton].forEach(addSubview)
 
         NSLayoutConstraint.activate([
             enabledSwitch.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
@@ -57,18 +70,18 @@ private final class AutoMessageTargetRowView: NSView {
             appLabel.widthAnchor.constraint(equalToConstant: 86),
 
             messageField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 232),
-            messageField.trailingAnchor.constraint(equalTo: fileButton.leadingAnchor, constant: -8),
+            messageField.trailingAnchor.constraint(equalTo: fileButton.leadingAnchor, constant: -10),
             messageField.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
 
             fileButton.trailingAnchor.constraint(equalTo: clearFileButton.leadingAnchor, constant: -6),
             fileButton.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
-            fileButton.widthAnchor.constraint(equalToConstant: 72),
-            fileButton.heightAnchor.constraint(equalToConstant: 28),
+            fileButton.widthAnchor.constraint(equalToConstant: 88),
+            fileButton.heightAnchor.constraint(equalToConstant: 26),
 
             clearFileButton.trailingAnchor.constraint(equalTo: trailingAnchor),
             clearFileButton.centerYAnchor.constraint(equalTo: enabledSwitch.centerYAnchor),
-            clearFileButton.widthAnchor.constraint(equalToConstant: 28),
-            clearFileButton.heightAnchor.constraint(equalToConstant: 28),
+            clearFileButton.widthAnchor.constraint(equalToConstant: 26),
+            clearFileButton.heightAnchor.constraint(equalToConstant: 26),
         ])
 
         updateFileButtonTitle()
@@ -98,27 +111,12 @@ private final class AutoMessageTargetRowView: NSView {
         )
     }
 
-    private func configure(field: NSTextField, value: String, placeholder: String) {
-        field.translatesAutoresizingMaskIntoConstraints = false
-        field.stringValue = value
-        field.placeholderString = placeholder
-        field.font = .systemFont(ofSize: 13)
-        field.lineBreakMode = .byTruncatingTail
+    func controlTextDidChange(_ obj: Notification) {
+        onChange?()
     }
 
-    private func configureFileButtons() {
-        fileButton.translatesAutoresizingMaskIntoConstraints = false
-        fileButton.target = self
-        fileButton.action = #selector(selectFile)
-        fileButton.bezelStyle = .rounded
-        fileButton.font = .systemFont(ofSize: 12, weight: .semibold)
-
-        clearFileButton.translatesAutoresizingMaskIntoConstraints = false
-        clearFileButton.target = self
-        clearFileButton.action = #selector(clearFile)
-        clearFileButton.bezelStyle = .rounded
-        clearFileButton.font = .systemFont(ofSize: 12, weight: .semibold)
-        clearFileButton.title = "×"
+    @objc private func controlChanged() {
+        onChange?()
     }
 
     @objc private func selectFile() {
@@ -128,18 +126,18 @@ private final class AutoMessageTargetRowView: NSView {
         panel.canChooseFiles = true
         panel.begin { [weak self] response in
             guard response == .OK, let self else { return }
-            for path in panel.urls.map(\.path) {
-                if !self.filePaths.contains(path) {
-                    self.filePaths.append(path)
-                }
+            for path in panel.urls.map(\.path) where !self.filePaths.contains(path) {
+                self.filePaths.append(path)
             }
             self.updateFileButtonTitle()
+            self.onChange?()
         }
     }
 
     @objc private func clearFile() {
         filePaths = []
         updateFileButtonTitle()
+        onChange?()
     }
 
     private func cleanFilePaths() -> [String]? {
@@ -152,14 +150,14 @@ private final class AutoMessageTargetRowView: NSView {
     private func updateFileButtonTitle() {
         let paths = cleanFilePaths() ?? []
         guard !paths.isEmpty else {
-            fileButton.title = "文件"
-            fileButton.toolTip = "追加文件内容"
+            fileButton.setTitle("文件")
+            fileButton.toolTip = "附加原文件（可多选）"
             clearFileButton.isHidden = true
             return
         }
 
         let fileNames = paths.map { URL(fileURLWithPath: $0).lastPathComponent }
-        fileButton.title = "\(paths.count) 个文件"
+        fileButton.setTitle("\(paths.count) 个文件")
         fileButton.toolTip = fileNames.joined(separator: "\n")
         clearFileButton.isHidden = false
     }
@@ -180,22 +178,42 @@ private final class AutoMessageTargetRowView: NSView {
 }
 
 final class AutoMessageViewController: NSViewController {
-    private let store = AutoMessageSettingsStore()
-    private lazy var runner = AutoMessageRunner(store: store)
+    private let store: AutoMessageSettingsStore
+    private let runner: AutoMessageRunner
     private var settings = AutoMessageSettings.defaults
+    private var isApplyingSettings = false
+    private var pendingSave: DispatchWorkItem?
+    private var terminationObserver: NSObjectProtocol?
 
     private let startDatePicker = NSDatePicker()
     private let timePicker = NSDatePicker()
+    private let scheduleBadge = BadgeView()
     private let dryRunSwitch = ToggleSwitch()
     private let submitSwitch = ToggleSwitch()
     private let statusLabel = NSTextField(labelWithString: " ")
     private let targetsStack = NSStackView()
     private var targetRows: [AutoMessageTargetRowView] = []
+    private let testButton = GlassButton(title: "测试发送", symbol: "paperplane.fill", style: .secondary, busyStyle: .roll)
+    private let installButton = GlassButton(title: "安装定时任务", symbol: "calendar.badge.clock", style: .primary, busyStyle: .ring)
+    private let uninstallButton = GlassButton(title: "卸载", style: .destructive)
+
+    init(store: AutoMessageSettingsStore = AutoMessageSettingsStore(), runner: AutoMessageRunner? = nil) {
+        self.store = store
+        self.runner = runner ?? AutoMessageRunner(store: store)
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    deinit {
+        if let terminationObserver { NotificationCenter.default.removeObserver(terminationObserver) }
+    }
 
     override func loadView() {
-        let root = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 590))
-        root.wantsLayer = true
-        root.layer?.backgroundColor = NSColor(calibratedWhite: 0.98, alpha: 1).cgColor
+        let root = FillView(color: Palette.windowBackground)
+        root.frame = NSRect(x: 0, y: 0, width: 800, height: 590)
         view = root
         buildUI(in: root)
     }
@@ -205,22 +223,35 @@ final class AutoMessageViewController: NSViewController {
         do {
             settings = try store.load()
             applySettingsToUI()
-            statusLabel.stringValue = "已加载自动消息配置"
+            statusLabel.stringValue = "改动会自动保存"
         } catch {
             settings = .defaults
             applySettingsToUI()
             statusLabel.stringValue = "读取配置失败，已使用默认值：\(error.localizedDescription)"
         }
+        refreshScheduleBadge()
+        terminationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.flushPendingSave()
+        }
     }
+
+    override func viewWillDisappear() {
+        super.viewWillDisappear()
+        flushPendingSave()
+    }
+
+    // MARK: Layout
 
     private func buildUI(in root: NSView) {
         let toolbar = ToolbarBackgroundView()
         toolbar.translatesAutoresizingMaskIntoConstraints = false
 
-        let content = NSView()
+        let content = FillView(color: Palette.contentBackground)
         content.translatesAutoresizingMaskIntoConstraints = false
-        content.wantsLayer = true
-        content.layer?.backgroundColor = NSColor.white.cgColor
 
         root.addSubview(toolbar)
         root.addSubview(content)
@@ -278,23 +309,14 @@ final class AutoMessageViewController: NSViewController {
         stack.alignment = .leading
         content.addSubview(stack)
 
-        let scheduleCard = makeScheduleCard()
-        let targetsCard = makeTargetsCard()
-        let actionsCard = makeActionsCard()
-
-        stack.addArrangedSubview(scheduleCard)
-        stack.addArrangedSubview(targetsCard)
-        stack.addArrangedSubview(actionsCard)
+        let cards = [makeScheduleCard(), makeTargetsCard(), makeActionsCard()]
+        cards.forEach(stack.addArrangedSubview)
 
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: content.topAnchor, constant: 20),
             stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -20),
-
-            scheduleCard.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            targetsCard.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            actionsCard.widthAnchor.constraint(equalTo: stack.widthAnchor),
-        ])
+        ] + cards.map { $0.widthAnchor.constraint(equalTo: stack.widthAnchor) })
     }
 
     private func makeScheduleCard() -> NSView {
@@ -310,13 +332,9 @@ final class AutoMessageViewController: NSViewController {
 
         configureDatePicker(startDatePicker, elements: [.yearMonthDay])
         configureDatePicker(timePicker, elements: [.hourMinute])
+        scheduleBadge.translatesAutoresizingMaskIntoConstraints = false
 
-        card.addSubview(icon)
-        card.addSubview(title)
-        card.addSubview(dateLabel)
-        card.addSubview(startDatePicker)
-        card.addSubview(timeLabel)
-        card.addSubview(timePicker)
+        [icon, title, dateLabel, startDatePicker, timeLabel, timePicker, scheduleBadge].forEach(card.addSubview)
 
         NSLayoutConstraint.activate([
             icon.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
@@ -327,19 +345,24 @@ final class AutoMessageViewController: NSViewController {
             title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 12),
             title.centerYAnchor.constraint(equalTo: card.centerYAnchor),
 
-            dateLabel.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 34),
+            dateLabel.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 30),
             dateLabel.centerYAnchor.constraint(equalTo: card.centerYAnchor),
 
             startDatePicker.leadingAnchor.constraint(equalTo: dateLabel.trailingAnchor, constant: 10),
             startDatePicker.centerYAnchor.constraint(equalTo: card.centerYAnchor),
             startDatePicker.widthAnchor.constraint(equalToConstant: 148),
 
-            timeLabel.leadingAnchor.constraint(equalTo: startDatePicker.trailingAnchor, constant: 28),
+            timeLabel.leadingAnchor.constraint(equalTo: startDatePicker.trailingAnchor, constant: 24),
             timeLabel.centerYAnchor.constraint(equalTo: card.centerYAnchor),
 
             timePicker.leadingAnchor.constraint(equalTo: timeLabel.trailingAnchor, constant: 10),
             timePicker.centerYAnchor.constraint(equalTo: card.centerYAnchor),
             timePicker.widthAnchor.constraint(equalToConstant: 96),
+
+            scheduleBadge.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            scheduleBadge.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            scheduleBadge.heightAnchor.constraint(equalToConstant: 28),
+            scheduleBadge.widthAnchor.constraint(equalToConstant: 138),
         ])
 
         return card
@@ -354,7 +377,7 @@ final class AutoMessageViewController: NSViewController {
         icon.translatesAutoresizingMaskIntoConstraints = false
         let title = makeLabel("目标与消息", font: .systemFont(ofSize: 14, weight: .semibold), color: .labelColor)
         let headerFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        let headerColor = NSColor.controlTextColor.withAlphaComponent(0.76)
+        let headerColor = NSColor.secondaryLabelColor
         let enabledHeader = makeLabel("启用", font: headerFont, color: headerColor)
         let appHeader = makeLabel("App", font: headerFont, color: headerColor)
         let messageHeader = makeLabel("Message", font: headerFont, color: headerColor)
@@ -366,13 +389,8 @@ final class AutoMessageViewController: NSViewController {
         targetsStack.spacing = 8
         targetsStack.alignment = .leading
 
-        card.addSubview(icon)
-        card.addSubview(title)
-        card.addSubview(headerRow)
-        headerRow.addSubview(enabledHeader)
-        headerRow.addSubview(appHeader)
-        headerRow.addSubview(messageHeader)
-        card.addSubview(targetsStack)
+        [icon, title, headerRow, targetsStack].forEach(card.addSubview)
+        [enabledHeader, appHeader, messageHeader].forEach(headerRow.addSubview)
 
         NSLayoutConstraint.activate([
             icon.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
@@ -394,7 +412,7 @@ final class AutoMessageViewController: NSViewController {
             appHeader.centerXAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 154),
             appHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
 
-            messageHeader.centerXAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 514),
+            messageHeader.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 234),
             messageHeader.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
 
             targetsStack.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
@@ -413,31 +431,35 @@ final class AutoMessageViewController: NSViewController {
 
         let dryRunLabel = makeLabel("Dry run", font: .systemFont(ofSize: 13), color: .labelColor)
         let submitLabel = makeLabel("Submit after paste", font: .systemFont(ofSize: 13), color: .labelColor)
-        let testButton = NSButton(title: "测试发送", target: self, action: #selector(testSend))
-        let installButton = NSButton(title: "安装定时任务", target: self, action: #selector(installSchedule))
-        let uninstallButton = NSButton(title: "卸载", target: self, action: #selector(uninstallSchedule))
 
-        [testButton, installButton, uninstallButton].forEach {
-            $0.translatesAutoresizingMaskIntoConstraints = false
-            $0.bezelStyle = .rounded
-            $0.font = .systemFont(ofSize: 12, weight: .semibold)
+        testButton.flyingSymbolName = "paperplane.fill"
+        testButton.busyTitle = "发送中…"
+        for (button, action) in [
+            (testButton, #selector(testSend)),
+            (installButton, #selector(installSchedule)),
+            (uninstallButton, #selector(uninstallSchedule)),
+        ] {
+            button.translatesAutoresizingMaskIntoConstraints = false
+            button.target = self
+            button.action = action
         }
 
-        dryRunSwitch.translatesAutoresizingMaskIntoConstraints = false
-        submitSwitch.translatesAutoresizingMaskIntoConstraints = false
+        for toggle in [dryRunSwitch, submitSwitch] {
+            toggle.translatesAutoresizingMaskIntoConstraints = false
+            toggle.target = self
+            toggle.action = #selector(settingsControlChanged)
+        }
+        dryRunSwitch.setAccessibilityLabel("Dry run")
+        submitSwitch.setAccessibilityLabel("Submit after paste")
+
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.font = .systemFont(ofSize: 12)
         statusLabel.textColor = .secondaryLabelColor
-        statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.lineBreakMode = .byWordWrapping
+        statusLabel.maximumNumberOfLines = 2
+        statusLabel.cell?.truncatesLastVisibleLine = true
 
-        card.addSubview(dryRunLabel)
-        card.addSubview(dryRunSwitch)
-        card.addSubview(submitLabel)
-        card.addSubview(submitSwitch)
-        card.addSubview(testButton)
-        card.addSubview(installButton)
-        card.addSubview(uninstallButton)
-        card.addSubview(statusLabel)
+        [dryRunLabel, dryRunSwitch, submitLabel, submitSwitch, testButton, installButton, uninstallButton, statusLabel].forEach(card.addSubview)
 
         NSLayoutConstraint.activate([
             dryRunLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
@@ -454,12 +476,12 @@ final class AutoMessageViewController: NSViewController {
 
             testButton.leadingAnchor.constraint(equalTo: dryRunLabel.leadingAnchor),
             testButton.topAnchor.constraint(equalTo: dryRunLabel.bottomAnchor, constant: 22),
-            testButton.widthAnchor.constraint(equalToConstant: 88),
+            testButton.widthAnchor.constraint(equalToConstant: 108),
             testButton.heightAnchor.constraint(equalToConstant: 30),
 
             installButton.leadingAnchor.constraint(equalTo: testButton.trailingAnchor, constant: 10),
             installButton.centerYAnchor.constraint(equalTo: testButton.centerYAnchor),
-            installButton.widthAnchor.constraint(equalToConstant: 112),
+            installButton.widthAnchor.constraint(equalToConstant: 134),
             installButton.heightAnchor.constraint(equalToConstant: 30),
 
             uninstallButton.leadingAnchor.constraint(equalTo: installButton.trailingAnchor, constant: 10),
@@ -480,15 +502,20 @@ final class AutoMessageViewController: NSViewController {
         picker.datePickerStyle = .textFieldAndStepper
         picker.datePickerElements = elements
         picker.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
-        picker.isBordered = true
-        picker.drawsBackground = true
+        picker.isBezeled = true
+        picker.target = self
+        picker.action = #selector(settingsControlChanged)
     }
 
+    // MARK: Settings ⇄ UI
+
     private func applySettingsToUI() {
+        isApplyingSettings = true
+        defer { isApplyingSettings = false }
         startDatePicker.dateValue = settings.startDate ?? Date()
         timePicker.dateValue = dateValueForTime(hour: settings.hour, minute: settings.minute)
-        dryRunSwitch.isOn = settings.dryRun
-        submitSwitch.isOn = settings.submitAfterPaste
+        dryRunSwitch.setOn(settings.dryRun, animated: false)
+        submitSwitch.setOn(settings.submitAfterPaste, animated: false)
         rebuildRows(with: settings.targets)
     }
 
@@ -500,21 +527,19 @@ final class AutoMessageViewController: NSViewController {
 
         targetRows = targets.map { AutoMessageTargetRowView(target: $0) }
         for row in targetRows {
+            row.onChange = { [weak self] in self?.scheduleSave() }
             targetsStack.addArrangedSubview(row)
             row.widthAnchor.constraint(equalTo: targetsStack.widthAnchor).isActive = true
         }
     }
 
-    private func readSettingsFromUI() throws -> AutoMessageSettings {
+    private func readSettingsFromUI() -> AutoMessageSettings {
         let calendar = Calendar.current
-        let timeComponents = calendar.dateComponents([.hour, .minute], from: timePicker.dateValue)
-        let hour = timeComponents.hour ?? 9
-        let minute = timeComponents.minute ?? 30
-
+        let time = calendar.dateComponents([.hour, .minute], from: timePicker.dateValue)
         return AutoMessageSettings(
             startDate: calendar.startOfDay(for: startDatePicker.dateValue),
-            hour: hour,
-            minute: minute,
+            hour: time.hour ?? 9,
+            minute: time.minute ?? 30,
             dryRun: dryRunSwitch.isOn,
             submitAfterPaste: submitSwitch.isOn,
             targets: targetRows.map { $0.target() },
@@ -530,36 +555,140 @@ final class AutoMessageViewController: NSViewController {
         return Calendar.current.date(from: components) ?? Date()
     }
 
-    @objc private func testSend() {
+    // MARK: Autosave
+
+    @objc private func settingsControlChanged() {
+        scheduleSave()
+    }
+
+    /// Edits are saved half a second after the last change.
+    private func scheduleSave() {
+        guard !isApplyingSettings else { return }
+        pendingSave?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.saveNow() }
+        pendingSave = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
+    }
+
+    private func flushPendingSave() {
+        if pendingSave != nil { saveNow() }
+    }
+
+    /// Saves the form. If a schedule is installed at another time, it is moved to the new time.
+    @discardableResult
+    private func saveNow() -> AutoMessageSettings {
+        pendingSave?.cancel()
+        pendingSave = nil
+        let newSettings = readSettingsFromUI()
         do {
-            let newSettings = try readSettingsFromUI()
             try store.save(newSettings)
             settings = newSettings
-            let result = runner.run(settings: newSettings)
-            statusLabel.stringValue = result.message
         } catch {
-            statusLabel.stringValue = error.localizedDescription
+            statusLabel.stringValue = "保存失败：\(error.localizedDescription)"
+            return newSettings
+        }
+
+        if let installed = runner.installedSchedule(),
+           installed.hour != newSettings.hour || installed.minute != newSettings.minute {
+            moveInstalledSchedule(to: newSettings)
+        } else {
+            statusLabel.stringValue = "已自动保存"
+        }
+        return newSettings
+    }
+
+    private func moveInstalledSchedule(to newSettings: AutoMessageSettings) {
+        guard let helperPath = bundledHelperPath() else {
+            statusLabel.stringValue = "已保存，但定时任务还停在旧时间：这个构建没有打包 keepgoing-automessage"
+            return
+        }
+        let runner = self.runner
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = runner.installLaunchAgent(helperPath: helperPath, settings: newSettings)
+            DispatchQueue.main.async {
+                self.statusLabel.stringValue = result.ok
+                    ? String(format: "已保存，定时任务改到每天 %02d:%02d", newSettings.hour, newSettings.minute)
+                    : result.message
+                self.refreshScheduleBadge()
+            }
+        }
+    }
+
+    private func bundledHelperPath() -> String? {
+        guard let path = Bundle.main.resourcePath.map({ "\($0)/keepgoing-automessage" }),
+              FileManager.default.isExecutableFile(atPath: path)
+        else { return nil }
+        return path
+    }
+
+    private func refreshScheduleBadge() {
+        if let installed = runner.installedSchedule() {
+            scheduleBadge.configure(
+                text: String(format: "已安装 · 每天 %02d:%02d", installed.hour, installed.minute),
+                fill: NSColor.systemGreen.withAlphaComponent(0.14),
+                textColor: .systemGreen
+            )
+        } else {
+            scheduleBadge.configure(text: "未安装", fill: NSColor.systemGray.withAlphaComponent(0.14), textColor: .secondaryLabelColor)
+        }
+    }
+
+    // MARK: Actions
+
+    private func setActionsEnabled(_ enabled: Bool) {
+        testButton.isEnabled = enabled || testButton.isBusy
+        installButton.isEnabled = enabled || installButton.isBusy
+        uninstallButton.isEnabled = enabled
+    }
+
+    @objc private func testSend() {
+        let settings = saveNow()
+        testButton.setBusy(true)
+        setActionsEnabled(false)
+        statusLabel.stringValue = settings.dryRun ? "Dry run：只检查配置，不发送" : "正在发送，会切换到目标 App…"
+        let runner = self.runner
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = runner.run(settings: settings, trigger: .manual)
+            DispatchQueue.main.async {
+                let title: String
+                switch result.status {
+                case .sent: title = "已发送"
+                case .skipped: title = "未发送"
+                case .failed: title = "发送失败"
+                }
+                self.testButton.finish(success: result.status == .sent, title: title, holdFor: 1.8)
+                self.statusLabel.stringValue = result.message
+                self.statusLabel.toolTip = result.message
+                self.setActionsEnabled(true)
+            }
         }
     }
 
     @objc private func installSchedule() {
-        do {
-            let newSettings = try readSettingsFromUI()
-            settings = newSettings
-            let helperPath = Bundle.main.resourcePath.map { "\($0)/keepgoing-automessage" } ?? ""
-            guard FileManager.default.isExecutableFile(atPath: helperPath) else {
-                statusLabel.stringValue = "定时助手尚未打包，请先重新构建包含 keepgoing-automessage 的应用。"
-                return
+        let settings = saveNow()
+        guard let helperPath = bundledHelperPath() else {
+            installButton.setBusy(true)
+            installButton.finish(success: false)
+            statusLabel.stringValue = "定时助手尚未打包，请先重新构建包含 keepgoing-automessage 的应用。"
+            return
+        }
+        installButton.setBusy(true)
+        setActionsEnabled(false)
+        let runner = self.runner
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = runner.installLaunchAgent(helperPath: helperPath, settings: settings)
+            DispatchQueue.main.async {
+                self.installButton.finish(success: result.ok)
+                self.statusLabel.stringValue = result.message
+                self.setActionsEnabled(true)
+                self.refreshScheduleBadge()
             }
-            let result = runner.installLaunchAgent(helperPath: helperPath, settings: newSettings)
-            statusLabel.stringValue = result.message
-        } catch {
-            statusLabel.stringValue = error.localizedDescription
         }
     }
 
     @objc private func uninstallSchedule() {
         let result = runner.uninstallLaunchAgent()
         statusLabel.stringValue = result.message
+        refreshScheduleBadge()
     }
 }

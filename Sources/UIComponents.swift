@@ -1,21 +1,33 @@
 import Cocoa
 
-struct CommandResult {
-    let code: Int32
-    let stdout: String
-    let stderr: String
+/// A plain view filled with a color that follows Light and Dark Mode.
+final class FillView: NSView {
+    var fillColor: NSColor {
+        didSet { needsDisplay = true }
+    }
+
+    init(color: NSColor) {
+        fillColor = color
+        super.init(frame: .zero)
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.backgroundColor = resolved(fillColor)
+    }
 }
 
 final class ToolbarBackgroundView: NSView {
     override func draw(_ dirtyRect: NSRect) {
-        NSColor(calibratedWhite: 0.92, alpha: 1).setFill()
-        bounds.fill()
-        let gradient = NSGradient(colors: [
-            NSColor(calibratedWhite: 0.94, alpha: 1),
-            NSColor(calibratedWhite: 0.86, alpha: 1),
-        ])
+        let gradient = NSGradient(colors: [Palette.toolbarTop, Palette.toolbarBottom])
         gradient?.draw(in: bounds, angle: 270)
-        NSColor(calibratedWhite: 0.77, alpha: 1).setStroke()
+        Palette.toolbarStroke.setStroke()
         let path = NSBezierPath()
         path.move(to: NSPoint(x: 0, y: 0.5))
         path.line(to: NSPoint(x: bounds.maxX, y: 0.5))
@@ -23,74 +35,38 @@ final class ToolbarBackgroundView: NSView {
     }
 }
 
-final class ToggleSwitch: NSControl {
-    var isBusy: Bool = false
-
-    var isOn: Bool = false {
-        didSet { needsDisplay = true }
-    }
-
-    override var isEnabled: Bool {
-        didSet { needsDisplay = true }
-    }
-
-    override var intrinsicContentSize: NSSize {
-        NSSize(width: 56, height: 30)
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        if !isEnabled || isBusy { return }
-        isOn.toggle()
-        sendAction(action, to: target)
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let trackRect = bounds.insetBy(dx: 1, dy: 2)
-        let track = NSBezierPath(roundedRect: trackRect, xRadius: trackRect.height / 2, yRadius: trackRect.height / 2)
-        let trackColor: NSColor
-        if !isEnabled {
-            trackColor = NSColor(calibratedWhite: isOn ? 0.72 : 0.84, alpha: 1)
-        } else if isOn {
-            trackColor = NSColor.systemBlue
-        } else {
-            trackColor = NSColor(calibratedWhite: 0.84, alpha: 1)
-        }
-        trackColor.setFill()
-        track.fill()
-
-        let knobSize: CGFloat = 24
-        let knobX = isOn ? bounds.maxX - knobSize - 4 : bounds.minX + 4
-        let knobRect = NSRect(x: knobX, y: bounds.midY - knobSize / 2, width: knobSize, height: knobSize)
-        NSColor.white.setFill()
-        NSBezierPath(ovalIn: knobRect).fill()
-    }
-}
-
 final class CardView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = NSColor(calibratedWhite: 0.985, alpha: 1).cgColor
-        layer?.cornerRadius = 9
-        layer?.borderWidth = 1
-        layer?.borderColor = NSColor(calibratedWhite: 0.86, alpha: 1).cgColor
     }
 
     required init?(coder: NSCoder) {
         nil
     }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        guard let layer else { return }
+        layer.cornerRadius = 9
+        layer.borderWidth = 1
+        layer.backgroundColor = resolved(Palette.cardFill)
+        layer.borderColor = resolved(Palette.cardStroke)
+    }
 }
 
 final class BadgeView: NSView {
     private let label = NSTextField(labelWithString: "")
+    private var fill: NSColor = .clear
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 12
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 12, weight: .semibold)
         label.alignment = .center
+        label.lineBreakMode = .byTruncatingTail
         addSubview(label)
         NSLayoutConstraint.activate([
             label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
@@ -107,24 +83,30 @@ final class BadgeView: NSView {
     func configure(text: String, fill: NSColor, textColor: NSColor) {
         label.stringValue = text
         label.textColor = textColor
-        layer?.backgroundColor = fill.cgColor
+        self.fill = fill
+        needsDisplay = true
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.cornerRadius = 12
+        layer?.backgroundColor = resolved(fill)
     }
 }
 
 final class SymbolTile: NSView {
     private let imageView = NSImageView()
+    private let fill: NSColor
 
     init(symbol: String, fill: NSColor, tint: NSColor) {
+        self.fill = fill
         super.init(frame: .zero)
         wantsLayer = true
-        layer?.cornerRadius = 7
-        layer?.backgroundColor = fill.cgColor
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.contentTintColor = tint
         imageView.imageScaling = .scaleProportionallyDown
-        if #available(macOS 11.0, *) {
-            imageView.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
-        }
+        imageView.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         addSubview(imageView)
         NSLayoutConstraint.activate([
             imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -137,77 +119,126 @@ final class SymbolTile: NSView {
     required init?(coder: NSCoder) {
         nil
     }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.cornerRadius = 7
+        layer?.backgroundColor = resolved(fill)
+    }
 }
 
-final class ToolbarItem: NSView {
-    private let iconContainer = NSView()
+/// One choice in the KeepGoing toolbar: a symbol over a label. Click it to choose it.
+/// The glass bubble behind the chosen symbol is a `GooeyIndicator` owned by the toolbar.
+final class ToolbarItem: NSControl {
+    static let iconSide: CGFloat = 40
+
+    let accent: NSColor
+    var onSelect: (() -> Void)?
+
+    var isSelectedItem = false {
+        didSet {
+            applyColors()
+            setAccessibilityValue(isSelectedItem ? 1 : 0)
+        }
+    }
+
+    override var isEnabled: Bool {
+        didSet { applyColors() }
+    }
+
     private let image = NSImageView()
     private let label: NSTextField
+    private var isHovering = false
 
-    init(title: String, symbol: String) {
+    init(title: String, symbol: String, accent: NSColor) {
+        self.accent = accent
         label = makeLabel(title, font: .systemFont(ofSize: 11, weight: .medium), color: .secondaryLabelColor)
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
 
-        iconContainer.translatesAutoresizingMaskIntoConstraints = false
-        iconContainer.wantsLayer = true
-        iconContainer.layer?.cornerRadius = 20
-
         image.translatesAutoresizingMaskIntoConstraints = false
         image.imageScaling = .scaleProportionallyDown
-        if #available(macOS 11.0, *) {
-            image.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
-        }
-
+        image.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
         label.alignment = .center
 
-        addSubview(iconContainer)
-        iconContainer.addSubview(image)
+        addSubview(image)
         addSubview(label)
-        configure(active: false, accent: .systemBlue)
 
         NSLayoutConstraint.activate([
             widthAnchor.constraint(equalToConstant: 82),
             heightAnchor.constraint(equalToConstant: 76),
 
-            iconContainer.topAnchor.constraint(equalTo: topAnchor),
-            iconContainer.centerXAnchor.constraint(equalTo: centerXAnchor),
-            iconContainer.widthAnchor.constraint(equalToConstant: 40),
-            iconContainer.heightAnchor.constraint(equalToConstant: 40),
-
-            image.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
-            image.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+            image.centerXAnchor.constraint(equalTo: centerXAnchor),
+            image.centerYAnchor.constraint(equalTo: topAnchor, constant: Self.iconSide / 2),
             image.widthAnchor.constraint(equalToConstant: 24),
             image.heightAnchor.constraint(equalToConstant: 24),
 
-            label.topAnchor.constraint(equalTo: iconContainer.bottomAnchor, constant: 8),
+            label.topAnchor.constraint(equalTo: topAnchor, constant: Self.iconSide + 8),
             label.leadingAnchor.constraint(equalTo: leadingAnchor),
             label.trailingAnchor.constraint(equalTo: trailingAnchor),
         ])
+
+        setAccessibilityElement(true)
+        setAccessibilityRole(.radioButton)
+        setAccessibilityLabel(title)
+        applyColors()
     }
 
     required init?(coder: NSCoder) {
         nil
     }
 
-    func configure(active: Bool, accent: NSColor, solid: Bool = false) {
-        if active {
-            iconContainer.layer?.backgroundColor = (solid ? accent : accent.withAlphaComponent(0.18)).cgColor
-            image.contentTintColor = solid ? .white : accent
-            label.textColor = accent
-            label.font = .systemFont(ofSize: 11, weight: .semibold)
-        } else {
-            iconContainer.layer?.backgroundColor = NSColor.clear.cgColor
-            image.contentTintColor = .secondaryLabelColor
-            label.textColor = .secondaryLabelColor
-            label.font = .systemFont(ofSize: 11, weight: .medium)
-        }
+    /// The circle the selection bubble covers, in `view`'s coordinates.
+    func iconFrame(in view: NSView) -> CGRect {
+        let side = Self.iconSide
+        let local = CGRect(x: (bounds.width - side) / 2, y: isFlipped ? 0 : bounds.height - side, width: side, height: side)
+        return convert(local, to: view)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self
+        ))
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isHovering = true
+        applyColors()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovering = false
+        applyColors()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard isEnabled else { return }
+        onSelect?()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        guard isEnabled else { return false }
+        onSelect?()
+        return true
+    }
+
+    private func applyColors() {
+        let hot = isHovering && isEnabled
+        image.contentTintColor = isSelectedItem ? accent : (hot ? .labelColor : .secondaryLabelColor)
+        label.textColor = isSelectedItem ? accent : (hot ? .labelColor : .secondaryLabelColor)
+        label.font = .systemFont(ofSize: 11, weight: isSelectedItem ? .semibold : .medium)
+        alphaValue = isEnabled ? 1 : 0.55
     }
 }
 
 final class TriangleView: NSView {
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.white.setFill()
+        Palette.contentBackground.setFill()
         let path = NSBezierPath()
         path.move(to: NSPoint(x: bounds.midX, y: bounds.maxY))
         path.line(to: NSPoint(x: bounds.maxX, y: bounds.minY))
@@ -223,40 +254,4 @@ func makeLabel(_ text: String, font: NSFont, color: NSColor) -> NSTextField {
     label.font = font
     label.textColor = color
     return label
-}
-
-func runCommand(_ path: String, _ args: [String]) -> CommandResult {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: path)
-    process.arguments = args
-    let out = Pipe()
-    let err = Pipe()
-    process.standardOutput = out
-    process.standardError = err
-    do {
-        try process.run()
-    } catch {
-        return CommandResult(code: 127, stdout: "", stderr: error.localizedDescription)
-    }
-    process.waitUntilExit()
-    let stdout = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-    let stderr = String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-    return CommandResult(code: process.terminationStatus, stdout: stdout, stderr: stderr)
-}
-
-func cleanMessage(_ primary: String, fallback: String) -> String {
-    let message = primary.trimmingCharacters(in: .whitespacesAndNewlines)
-    if !message.isEmpty { return message }
-    return fallback.trimmingCharacters(in: .whitespacesAndNewlines)
-}
-
-func shellQuote(_ value: String) -> String {
-    "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
-}
-
-func appleScriptLiteral(_ value: String) -> String {
-    "\"" + value
-        .replacingOccurrences(of: "\\", with: "\\\\")
-        .replacingOccurrences(of: "\"", with: "\\\"")
-        + "\""
 }
